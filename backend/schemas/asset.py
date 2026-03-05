@@ -155,3 +155,9 @@ class QueryPositionsRequest(BaseModel):
 class QueryTradesRequest(BaseModel):
     """查询成交请求模型"""
     account_id: str
+
+
+class AccountInfoResponse(BaseModel):
+    """账户信息响应模型"""
+    account_id: str
+    account_type: int

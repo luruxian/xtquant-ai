@@ -9,7 +9,7 @@ def get_qmt_path() -> str:
     
     :return: QMT 客户端 userdata_mini 路径
     """
-    return os.environ.get('QMT_PATH', 'D:\\迅投极速交易终端 睿智融科版\\userdata_mini')
+    return os.environ.get('QMT_PATH', 'C:\\Users\\Administrator\\Desktop\\讯投\\迅投极速策略交易系统交易终端 大同证券QMT实盘\\userdata_mini')
 
 
 def get_session_id() -> int:

@@ -1,5 +1,5 @@
 """服务层 - 包含业务逻辑"""
-from xtquant.xttrader import XtQuantTrader
+from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 from typing import Optional
 
@@ -25,6 +25,7 @@ class QMTService:
         :return: XtQuantTrader 实例
         """
         self.trader = XtQuantTrader(self.qmt_path, self.session_id)
+        self.trader.register_callback(XtQuantTraderCallback())
         return self.trader
     
     def connect(self, trader: XtQuantTrader) -> int:
@@ -53,4 +54,4 @@ class QMTService:
         :param trader: XtQuantTrader 实例
         """
         if trader:
-            trader.disconnect()
+            trader.stop()

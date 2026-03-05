@@ -1,7 +1,7 @@
 """账户资产查询路由"""
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
-from schemas.asset import AssetResponse, ErrorResponse
+from typing import Optional, List
+from schemas.asset import AssetResponse, ErrorResponse, AccountInfoResponse
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
@@ -14,18 +14,16 @@ router = APIRouter(
 
 @router.get("", response_model=AssetResponse)
 async def query_asset(
-    account_id: str = Query(..., description="资金账号，如 '1000000365'"),
-    account_type: Optional[str] = Query("STOCK", description="账号类型，默认为 'STOCK'（股票）")
+    account_id: str = Query(..., description="资金账号，如 '1000000365'")
 ):
     """
     查询账户资产
     
     - **account_id**: 资金账号，如 '1000000365'
-    - **account_type**: 账号类型，默认为 'STOCK'（股票）
-      可选值: STOCK, FUTURE, CREDIT, FUTURE_OPTION, STOCK_OPTION, HUGANGTONG, SHENGANGTONG
     """
     try:
         qmt_path = get_qmt_path()
+        print("qmt_path:", qmt_path)
         
         if not validate_qmt_path(qmt_path):
             raise HTTPException(
@@ -33,7 +31,7 @@ async def query_asset(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
         
         session_id = get_session_id()
@@ -42,7 +40,7 @@ async def query_asset(
         trader = qmt_service.create_trader()
         
         from xtquant.xttype import StockAccount
-        acc = StockAccount(account_id, account_type)
+        acc = StockAccount(account_id)
         
         trader.start()
         
@@ -53,7 +51,7 @@ async def query_asset(
                 detail=ErrorResponse(
                     error="CONNECT_FAILED",
                     message=f"连接 QMT 失败，错误码: {connect_result}"
-                )
+                ).dict()
             )
         
         subscribe_result = qmt_service.subscribe(trader, acc)
@@ -63,7 +61,7 @@ async def query_asset(
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
                     message=f"订阅交易回调失败，错误码: {subscribe_result}"
-                )
+                ).dict()
             )
         
         asset = trader.query_stock_asset(acc)
@@ -76,7 +74,7 @@ async def query_asset(
                 detail=ErrorResponse(
                     error="ASSET_NOT_FOUND",
                     message=f"账户 {account_id} 的资产信息不存在"
-                )
+                ).dict()
             )
         
         return AssetResponse(
@@ -96,20 +94,83 @@ async def query_asset(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
+            ).dict()
+        )
+
+
+@router.get("/accounts", response_model=List[AccountInfoResponse])
+async def query_accounts():
+    """
+    查询所有账户信息
+    """
+    try:
+        qmt_path = get_qmt_path()
+        print("qmt_path:", qmt_path)
+
+        if not validate_qmt_path(qmt_path):
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    error="PATH_NOT_FOUND",
+                    message=f"QMT 客户端路径不存在: {qmt_path}"
+                ).dict()
             )
+        
+        session_id = get_session_id()
+        
+        qmt_service = QMTService(qmt_path, session_id)
+        trader = qmt_service.create_trader()
+        
+        trader.start()
+        
+        connect_result = qmt_service.connect(trader)
+        if connect_result != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="CONNECT_FAILED",
+                    message=f"连接 QMT 失败，错误码: {connect_result}"
+                ).dict()
+            )
+        
+        # 获取所有账号列表
+        account_list = trader.query_account_infos()
+        
+        qmt_service.disconnect(trader)
+        
+        if not account_list:
+            return []
+        
+        # 转换为响应模型
+        accounts = []
+        for acc_info in account_list:
+            accounts.append(AccountInfoResponse(
+                account_id=acc_info.account_id,
+                account_type=acc_info.account_type
+            ))
+        
+        return accounts
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="INTERNAL_ERROR",
+                message=str(e)
+            ).dict()
         )
 
 
 @router.get("/batch", response_model=list)
 async def query_assets(
-    account_ids: str = Query(..., description="资金账号列表，用逗号分隔，如 '1000000365,1000000366'"),
-    account_type: Optional[str] = Query("STOCK", description="账号类型，默认为 'STOCK'（股票）")
+    account_ids: str = Query(..., description="资金账号列表，用逗号分隔，如 '1000000365,1000000366'")
 ):
     """
     批量查询账户资产（多个账号用逗号分隔）
     
     - **account_ids**: 资金账号列表，如 '1000000365,1000000366'
-    - **account_type**: 账号类型，默认为 'STOCK'（股票）
     """
     try:
         qmt_path = get_qmt_path()
@@ -120,7 +181,7 @@ async def query_assets(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
         
         session_id = get_session_id()
@@ -135,7 +196,7 @@ async def query_assets(
             try:
                 qmt_service = QMTService(qmt_path, session_id)
                 trader = qmt_service.create_trader()
-                acc = StockAccount(account_id, account_type)
+                acc = StockAccount(account_id)
                 
                 trader.start()
                 connect_result = qmt_service.connect(trader)
@@ -189,5 +250,5 @@ async def query_assets(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )

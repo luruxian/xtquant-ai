@@ -1,5 +1,6 @@
 """成交查询路由"""
 from fastapi import APIRouter, HTTPException, Query
+from typing import List
 from schemas.asset import TradeResponse, ErrorResponse, QueryTradesRequest
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
@@ -11,7 +12,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[TradeResponse])
+@router.get("", response_model=List[TradeResponse])
 async def query_trades(
     account_id: str = Query(..., description="资金账号")
 ):

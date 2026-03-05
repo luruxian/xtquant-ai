@@ -1,6 +1,6 @@
 """持仓查询路由"""
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, HTTPException, Query, Path
+from typing import Optional, List
 from schemas.asset import PositionResponse, ErrorResponse, QueryPositionsRequest
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
@@ -14,7 +14,7 @@ router = APIRouter(
 
 @router.get("/{stock_code}", response_model=PositionResponse)
 async def query_position(
-    stock_code: str = Query(..., description="证券代码，如 '600000.SH'"),
+    stock_code: str = Path(..., description="证券代码，如 '600000.SH'"),
     account_id: str = Query(..., description="资金账号")
 ):
     """
@@ -106,7 +106,7 @@ async def query_position(
         )
 
 
-@router.get("", response_model=list[PositionResponse])
+@router.get("", response_model=List[PositionResponse])
 async def query_positions(
     account_id: str = Query(..., description="资金账号")
 ):

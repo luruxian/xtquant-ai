@@ -1,6 +1,6 @@
 """订单管理路由"""
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, HTTPException, Query, Path
+from typing import Optional, List
 from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
@@ -216,7 +216,7 @@ async def cancel_order(request: CancelOrderRequest):
 
 @router.get("/{order_id}", response_model=OrderResponse)
 async def query_order(
-    order_id: int = Query(..., description="订单编号"),
+    order_id: int = Path(..., description="订单编号"),
     account_id: str = Query(..., description="资金账号")
 ):
     """
@@ -314,7 +314,7 @@ async def query_order(
         )
 
 
-@router.get("", response_model=list[OrderResponse])
+@router.get("", response_model=List[OrderResponse])
 async def query_orders(
     account_id: str = Query(..., description="资金账号"),
     order_type: Optional[int] = Query(None, description="委托类型，可选")
