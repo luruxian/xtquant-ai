@@ -317,17 +317,22 @@ async def query_order(
 @router.get("", response_model=List[OrderResponse])
 async def query_orders(
     account_id: str = Query(..., description="资金账号"),
-    order_type: Optional[int] = Query(None, description="委托类型，可选")
+    cancelable_only: bool = Query(False, description="仅查询可撤委托，默认为False")
 ):
     """
-    查询当日所有订单
-    
+    查询当日所有委托
+
     - **account_id**: 资金账号
-    - **order_type**: 委托类型，可选
+    - **cancelable_only**: 仅查询可撤委托，默认为False
+
+    示例：
+    查询股票资金账号1000000365对应的当日所有委托
+    account = StockAccount('1000000365')
+    orders = xt_trader.query_stock_orders(account, False)
     """
     try:
         qmt_path = get_qmt_path()
-        
+
         if not validate_qmt_path(qmt_path):
             raise HTTPException(
                 status_code=404,
@@ -336,18 +341,18 @@ async def query_orders(
                     message=f"QMT 客户端路径不存在: {qmt_path}"
                 )
             )
-        
+
         session_id = get_session_id()
-        
+
         from xtquant.xttype import StockAccount
-        
+
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.create_trader()
-        
+
         acc = StockAccount(account_id)
-        
+
         qmt_service.start(trader)
-        
+
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:
             raise HTTPException(
@@ -357,7 +362,7 @@ async def query_orders(
                     message=f"连接 QMT 失败，错误码: {connect_result}"
                 ).dict()
             )
-        
+
         subscribe_result = qmt_service.subscribe(trader, acc)
         if subscribe_result != 0:
             raise HTTPException(
@@ -367,14 +372,15 @@ async def query_orders(
                     message=f"订阅交易回调失败，错误码: {subscribe_result}"
                 )
             )
-        
-        orders = trader.query_stock_orders(acc, order_type)
-        
+
+        # 根据文档调用 query_stock_orders(account, cancelable_only)
+        orders = trader.query_stock_orders(acc, cancelable_only)
+
         qmt_service.disconnect(trader)
-        
+
         if orders is None:
             return []
-        
+
         return [
             OrderResponse(
                 account_type=order.account_type,
@@ -398,7 +404,7 @@ async def query_orders(
             )
             for order in orders
         ]
-        
+
     except HTTPException:
         raise
     except Exception as e:

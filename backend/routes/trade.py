@@ -18,8 +18,13 @@ async def query_trades(
 ):
     """
     查询当日所有成交
-    
+
     - **account_id**: 资金账号
+
+    示例：
+    查询股票资金账号1000000365对应的当日所有成交
+    account = StockAccount('1000000365')
+    trades = xt_trader.query_stock_trades(account)
     """
     try:
         qmt_path = get_qmt_path()
