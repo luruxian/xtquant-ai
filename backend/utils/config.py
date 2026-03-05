@@ -1,5 +1,6 @@
 """工具模块 - 包含通用工具函数"""
 import os
+import time
 from typing import Optional
 
 
@@ -18,7 +19,7 @@ def get_session_id() -> int:
     
     :return: 会话 ID，默认为 123456
     """
-    return int(int(time.time()))
+    return int(time.time())
 
 
 def validate_qmt_path(path: str) -> bool:
