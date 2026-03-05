@@ -1,4 +1,6 @@
+"""主应用入口"""
 from fastapi import FastAPI
+from routes import asset, order, position, trade
 
 app = FastAPI(
     title="MiniQMT AI Backend",
@@ -15,3 +17,9 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+app.include_router(asset.router)
+app.include_router(order.router)
+app.include_router(position.router)
+app.include_router(trade.router)
