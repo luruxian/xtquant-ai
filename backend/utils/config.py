@@ -18,7 +18,7 @@ def get_session_id() -> int:
     
     :return: 会话 ID，默认为 123456
     """
-    return int(os.environ.get('SESSION_ID', '123456'))
+    return int(int(time.time()))
 
 
 def validate_qmt_path(path: str) -> bool:

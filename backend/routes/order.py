@@ -44,32 +44,28 @@ async def create_order(request: OrderRequest):
         from xtquant import xtconstant
         
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
-        
-        acc = StockAccount(request.account_id)
-        
-        qmt_service.start(trader)
-        
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
+        trader = qmt_service.get_shared_trader()
+        if not trader:
             raise HTTPException(
                 status_code=500,
                 detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
+                    error="TRADER_NOT_AVAILABLE",
+                    message="获取全局交易实例失败"
                 )
             )
-        
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
+
+        acc = StockAccount(request.account_id)
+
+        # 确保账户已订阅
+        if not qmt_service.ensure_account_subscribed(request.account_id):
             raise HTTPException(
                 status_code=500,
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
+                    message=f"订阅账户失败: {request.account_id}"
                 )
             )
-        
+
         order_id = trader.order_stock(
             acc,
             request.stock_code,
@@ -80,7 +76,7 @@ async def create_order(request: OrderRequest):
             request.strategy_name,
             request.remark
         )
-        
+
         if order_id is None:
             raise HTTPException(
                 status_code=500,
@@ -89,10 +85,8 @@ async def create_order(request: OrderRequest):
                     message="下单失败"
                 )
             )
-        
+
         order = trader.query_stock_order(acc, order_id)
-        
-        qmt_service.disconnect(trader)
         
         if order is None:
             raise HTTPException(
@@ -161,35 +155,29 @@ async def cancel_order(request: CancelOrderRequest):
         from xtquant.xttype import StockAccount
         
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
-        
-        acc = StockAccount(request.account_id)
-        
-        qmt_service.start(trader)
-        
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
+        trader = qmt_service.get_shared_trader()
+        if not trader:
             raise HTTPException(
                 status_code=500,
                 detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
+                    error="TRADER_NOT_AVAILABLE",
+                    message="获取全局交易实例失败"
                 )
             )
-        
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
+
+        acc = StockAccount(request.account_id)
+
+        # 确保账户已订阅
+        if not qmt_service.ensure_account_subscribed(request.account_id):
             raise HTTPException(
                 status_code=500,
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
+                    message=f"订阅账户失败: {request.account_id}"
                 )
             )
-        
+
         result = trader.cancel_order_stock(acc, request.order_id)
-        
-        qmt_service.disconnect(trader)
         
         if result is None:
             raise HTTPException(
@@ -221,13 +209,13 @@ async def query_order(
 ):
     """
     查询订单
-    
+
     - **order_id**: 订单编号
     - **account_id**: 资金账号
     """
     try:
         qmt_path = get_qmt_path()
-        
+
         if not validate_qmt_path(qmt_path):
             raise HTTPException(
                 status_code=404,
@@ -236,42 +224,19 @@ async def query_order(
                     message=f"QMT 客户端路径不存在: {qmt_path}"
                 )
             )
-        
+
         session_id = get_session_id()
-        
-        from xtquant.xttype import StockAccount
-        
+
+        # 使用新的查询方法
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
-        
-        acc = StockAccount(account_id)
-        
-        qmt_service.start(trader)
-        
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
-                ).dict()
-            )
-        
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
-                )
-            )
-        
-        order = trader.query_stock_order(acc, order_id)
-        
-        qmt_service.disconnect(trader)
-        
+
+        # 定义查询函数
+        def query_order_func(trader, account):
+            return trader.query_stock_order(account, order_id)
+
+        # 执行查询（自动处理账户订阅）
+        order = qmt_service.query_with_account(account_id, query_order_func)
+
         if order is None:
             raise HTTPException(
                 status_code=404,
@@ -280,7 +245,7 @@ async def query_order(
                     message=f"订单 {order_id} 不存在"
                 )
             )
-        
+
         return OrderResponse(
             account_type=order.account_type,
             account_id=order.account_id,
@@ -301,7 +266,7 @@ async def query_order(
             direction=order.direction,
             offset_flag=order.offset_flag
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -344,39 +309,15 @@ async def query_orders(
 
         session_id = get_session_id()
 
-        from xtquant.xttype import StockAccount
-
+        # 使用新的查询方法
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
 
-        acc = StockAccount(account_id)
+        # 定义查询函数
+        def query_orders_func(trader, account):
+            return trader.query_stock_orders(account, cancelable_only)
 
-        qmt_service.start(trader)
-
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
-                ).dict()
-            )
-
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
-                )
-            )
-
-        # 根据文档调用 query_stock_orders(account, cancelable_only)
-        orders = trader.query_stock_orders(acc, cancelable_only)
-
-        qmt_service.disconnect(trader)
+        # 执行查询（自动处理账户订阅）
+        orders = qmt_service.query_with_account(account_id, query_orders_func)
 
         if orders is None:
             return []

@@ -28,7 +28,7 @@ async def query_trades(
     """
     try:
         qmt_path = get_qmt_path()
-        
+
         if not validate_qmt_path(qmt_path):
             raise HTTPException(
                 status_code=404,
@@ -37,45 +37,22 @@ async def query_trades(
                     message=f"QMT 客户端路径不存在: {qmt_path}"
                 )
             )
-        
+
         session_id = get_session_id()
-        
-        from xtquant.xttype import StockAccount
-        
+
+        # 使用新的查询方法
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
-        
-        acc = StockAccount(account_id)
-        
-        qmt_service.start(trader)
-        
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
-                )
-            )
-        
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
-                )
-            )
-        
-        trades = trader.query_stock_trades(acc)
-        
-        qmt_service.disconnect(trader)
-        
+
+        # 定义查询函数
+        def query_trades_func(trader, account):
+            return trader.query_stock_trades(account)
+
+        # 执行查询（自动处理账户订阅）
+        trades = qmt_service.query_with_account(account_id, query_trades_func)
+
         if trades is None:
             return []
-        
+
         return [
             TradeResponse(
                 account_type=trade.account_type,
@@ -96,7 +73,7 @@ async def query_trades(
             )
             for trade in trades
         ]
-        
+
     except HTTPException:
         raise
     except Exception as e:

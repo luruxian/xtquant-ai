@@ -19,13 +19,13 @@ async def query_position(
 ):
     """
     根据股票代码查询持仓
-    
+
     - **stock_code**: 证券代码
     - **account_id**: 资金账号
     """
     try:
         qmt_path = get_qmt_path()
-        
+
         if not validate_qmt_path(qmt_path):
             raise HTTPException(
                 status_code=404,
@@ -34,42 +34,19 @@ async def query_position(
                     message=f"QMT 客户端路径不存在: {qmt_path}"
                 )
             )
-        
+
         session_id = get_session_id()
-        
-        from xtquant.xttype import StockAccount
-        
+
+        # 使用新的查询方法
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
-        
-        acc = StockAccount(account_id)
-        
-        qmt_service.start(trader)
-        
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
-                )
-            )
-        
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
-                )
-            )
-        
-        position = trader.query_stock_position(acc, stock_code)
-        
-        qmt_service.disconnect(trader)
-        
+
+        # 定义查询函数
+        def query_position_func(trader, account):
+            return trader.query_stock_position(account, stock_code)
+
+        # 执行查询（自动处理账户订阅）
+        position = qmt_service.query_with_account(account_id, query_position_func)
+
         if position is None:
             raise HTTPException(
                 status_code=404,
@@ -78,7 +55,7 @@ async def query_position(
                     message=f"股票 {stock_code} 的持仓信息不存在"
                 )
             )
-        
+
         return PositionResponse(
             account_type=position.account_type,
             account_id=position.account_id,
@@ -93,7 +70,7 @@ async def query_position(
             avg_price=position.avg_price,
             direction=position.direction
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -112,12 +89,12 @@ async def query_positions(
 ):
     """
     查询当日所有持仓
-    
+
     - **account_id**: 资金账号
     """
     try:
         qmt_path = get_qmt_path()
-        
+
         if not validate_qmt_path(qmt_path):
             raise HTTPException(
                 status_code=404,
@@ -126,45 +103,22 @@ async def query_positions(
                     message=f"QMT 客户端路径不存在: {qmt_path}"
                 )
             )
-        
+
         session_id = get_session_id()
-        
-        from xtquant.xttype import StockAccount
-        
+
+        # 使用新的查询方法
         qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.create_trader()
-        
-        acc = StockAccount(account_id)
-        
-        qmt_service.start(trader)
-        
-        connect_result = qmt_service.connect(trader)
-        if connect_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="CONNECT_FAILED",
-                    message=f"连接 QMT 失败，错误码: {connect_result}"
-                )
-            )
-        
-        subscribe_result = qmt_service.subscribe(trader, acc)
-        if subscribe_result != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅交易回调失败，错误码: {subscribe_result}"
-                )
-            )
-        
-        positions = trader.query_stock_positions(acc)
-        
-        qmt_service.disconnect(trader)
-        
+
+        # 定义查询函数
+        def query_positions_func(trader, account):
+            return trader.query_stock_positions(account)
+
+        # 执行查询（自动处理账户订阅）
+        positions = qmt_service.query_with_account(account_id, query_positions_func)
+
         if positions is None:
             return []
-        
+
         return [
             PositionResponse(
                 account_type=position.account_type,
@@ -182,7 +136,7 @@ async def query_positions(
             )
             for position in positions
         ]
-        
+
     except HTTPException:
         raise
     except Exception as e:
