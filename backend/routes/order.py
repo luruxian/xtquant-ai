@@ -48,7 +48,7 @@ async def create_order(request: OrderRequest):
         
         acc = StockAccount(request.account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:
@@ -165,7 +165,7 @@ async def cancel_order(request: CancelOrderRequest):
         
         acc = StockAccount(request.account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:
@@ -246,7 +246,7 @@ async def query_order(
         
         acc = StockAccount(account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:
@@ -255,7 +255,7 @@ async def query_order(
                 detail=ErrorResponse(
                     error="CONNECT_FAILED",
                     message=f"连接 QMT 失败，错误码: {connect_result}"
-                )
+                ).dict()
             )
         
         subscribe_result = qmt_service.subscribe(trader, acc)
@@ -346,7 +346,7 @@ async def query_orders(
         
         acc = StockAccount(account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:
@@ -355,7 +355,7 @@ async def query_orders(
                 detail=ErrorResponse(
                     error="CONNECT_FAILED",
                     message=f"连接 QMT 失败，错误码: {connect_result}"
-                )
+                ).dict()
             )
         
         subscribe_result = qmt_service.subscribe(trader, acc)

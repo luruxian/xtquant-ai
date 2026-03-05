@@ -39,12 +39,11 @@ async def query_asset(
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.create_trader()
         
-        from xtquant.xttype import StockAccount
-        acc = StockAccount(account_id)
-        
-        trader.start()
+        qmt_service.start(trader)
+        print("Trader started")
         
         connect_result = qmt_service.connect(trader)
+        print("Connect result:", connect_result)
         if connect_result != 0:
             raise HTTPException(
                 status_code=500,
@@ -53,6 +52,9 @@ async def query_asset(
                     message=f"连接 QMT 失败，错误码: {connect_result}"
                 ).dict()
             )
+        
+        from xtquant.xttype import StockAccount
+        acc = StockAccount(account_id)
         
         subscribe_result = qmt_service.subscribe(trader, acc)
         if subscribe_result != 0:
@@ -121,9 +123,11 @@ async def query_accounts():
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.create_trader()
         
-        trader.start()
+        qmt_service.start(trader)
+        print("Accounts endpoint - Trader started")
         
         connect_result = qmt_service.connect(trader)
+        print("Accounts endpoint - Connect result:", connect_result)
         if connect_result != 0:
             raise HTTPException(
                 status_code=500,
@@ -198,7 +202,7 @@ async def query_assets(
                 trader = qmt_service.create_trader()
                 acc = StockAccount(account_id)
                 
-                trader.start()
+                qmt_service.start(trader)
                 connect_result = qmt_service.connect(trader)
                 
                 if connect_result != 0:

@@ -42,7 +42,7 @@ async def query_trades(
         
         acc = StockAccount(account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:

@@ -44,7 +44,7 @@ async def query_position(
         
         acc = StockAccount(account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:
@@ -136,7 +136,7 @@ async def query_positions(
         
         acc = StockAccount(account_id)
         
-        trader.start()
+        qmt_service.start(trader)
         
         connect_result = qmt_service.connect(trader)
         if connect_result != 0:

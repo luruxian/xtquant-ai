@@ -28,6 +28,14 @@ class QMTService:
         self.trader.register_callback(XtQuantTraderCallback())
         return self.trader
     
+    def start(self, trader: XtQuantTrader) -> None:
+        """
+        启动交易客户端
+        
+        :param trader: XtQuantTrader 实例
+        """
+        trader.start()
+    
     def connect(self, trader: XtQuantTrader) -> int:
         """
         连接 QMT
