@@ -103,10 +103,8 @@ async def download_etf_info(request: ETFDownloadRequest = None):
 
         session_id = get_session_id()
 
-        # 导入xtquant相关模块
         from xtquant import xtdata
 
-        # 创建QMT服务实例
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
         if not trader:
@@ -118,74 +116,79 @@ async def download_etf_info(request: ETFDownloadRequest = None):
                 )
             )
 
-        # 确定要下载的ETF列表
         etf_codes_to_download = []
         if request and request.etf_codes:
             etf_codes_to_download = request.etf_codes
         else:
-            # 如果没有指定，尝试获取所有ETF列表
-            # 这里需要根据xtquant的实际API获取ETF列表
-            # 暂时使用一些常见的ETF代码
-            etf_codes_to_download = [
-                "510300.SH",  # 沪深300ETF
-                "510500.SH",  # 中证500ETF
-                "510050.SH",  # 上证50ETF
-                "159919.SZ",  # 沪深300ETF（深市）
-                "159915.SZ",  # 创业板ETF
-            ]
+            try:
+                all_etf_info = xtdata.get_etf_info()
+                if all_etf_info:
+                    etf_codes_to_download = list(all_etf_info.keys())
+                else:
+                    etf_codes_to_download = [
+                        "510300.SH", "510500.SH", "510050.SH",
+                        "159919.SZ", "159915.SZ"
+                    ]
+            except Exception:
+                etf_codes_to_download = [
+                    "510300.SH", "510500.SH", "510050.SH",
+                    "159919.SZ", "159915.SZ"
+                ]
 
         downloaded_count = 0
         failed_codes = []
 
-        # 下载每个ETF的信息
         for etf_code in etf_codes_to_download:
             try:
-                # 调用xtdata的ETF信息下载接口
-                # 根据文档，download_etf_info()下载所有ETF申赎清单信息
-                # 这里可能需要根据实际API调整
-
-                # 模拟下载过程
                 logger.info(f"下载ETF信息: {etf_code}")
 
-                # 模拟ETF信息
-                etf_info = {
-                    "etf_code": etf_code,
-                    "etf_name": f"ETF-{etf_code}",
-                    "creation_unit": 1000000,  # 100万份
-                    "cash_component": 1000.0,
-                    "estimated_cash": 500.0,
-                    "total_value": 1000000.0,
-                    "nav": 1.0,
-                    "iopv": 1.01,
-                    "creation_fee": 0.001,
-                    "redemption_fee": 0.001,
-                    "trading_day": datetime.now().strftime("%Y%m%d"),
-                    "update_time": datetime.now(),
-                    "status": "normal",
-                    "components": [
-                        {
-                            "stock_code": "600000.SH",
-                            "stock_name": "浦发银行",
-                            "quantity": 10000,
-                            "cash_substitute": 0.0,
-                            "premium_rate": 0.0,
-                            "discount_rate": 0.0,
-                            "market_value": 100000.0
+                xtdata.download_etf_info([etf_code])
+
+                etf_data = xtdata.get_etf_info(etf_code)
+
+                if etf_data:
+                    etf_info = {
+                        "etf_code": etf_code,
+                        "etf_name": etf_data.get("name", f"ETF-{etf_code}"),
+                        "creation_unit": etf_data.get("creation_unit", 1000000),
+                        "cash_component": etf_data.get("cash_component", 0.0),
+                        "estimated_cash": etf_data.get("estimated_cash", 0.0),
+                        "total_value": etf_data.get("total_value", 0.0),
+                        "nav": etf_data.get("nav", 0.0),
+                        "iopv": etf_data.get("iopv", 0.0),
+                        "creation_fee": etf_data.get("creation_fee", 0.001),
+                        "redemption_fee": etf_data.get("redemption_fee", 0.001),
+                        "trading_day": etf_data.get("trading_day", ""),
+                        "update_time": etf_data.get("update_time", datetime.now()),
+                        "status": etf_data.get("status", "normal"),
+                        "components": []
+                    }
+
+                    components_data = etf_data.get("components", [])
+                    for comp in components_data:
+                        component = {
+                            "stock_code": comp.get("stock_code", ""),
+                            "stock_name": comp.get("stock_name", ""),
+                            "quantity": comp.get("quantity", 0),
+                            "cash_substitute": comp.get("cash_substitute", 0.0),
+                            "premium_rate": comp.get("premium_rate", 0.0),
+                            "discount_rate": comp.get("discount_rate", 0.0),
+                            "market_value": comp.get("market_value", 0.0)
                         }
-                    ]
-                }
+                        etf_info["components"].append(component)
 
-                # 保存到缓存
-                etf_manager.set_etf_info(etf_code, etf_info)
-                downloaded_count += 1
+                    etf_manager.set_etf_info(etf_code, etf_info)
+                    downloaded_count += 1
 
-                logger.info(f"ETF信息下载成功: {etf_code}")
+                    logger.info(f"ETF信息下载成功: {etf_code}")
+                else:
+                    failed_codes.append(etf_code)
+                    logger.warning(f"ETF信息为空: {etf_code}")
 
             except Exception as e:
                 logger.error(f"下载ETF信息失败: {etf_code}, 错误: {e}")
                 failed_codes.append(etf_code)
 
-        # 如果请求强制刷新，清理缓存
         if request and request.force_refresh:
             etf_manager.clear_cache()
 
@@ -251,54 +254,137 @@ async def get_etf_info(
                 )
             )
 
-        # 如果强制刷新，先清理缓存
         if force_refresh:
             etf_manager.clear_cache()
 
-            # 触发下载
             from xtquant import xtdata
-            # 调用下载接口
-            # xtdata.download_etf_info()
-            logger.info("强制刷新ETF信息缓存")
 
-        # 解析ETF代码列表
+            try:
+                all_etf_info = xtdata.get_etf_info()
+                if all_etf_info:
+                    for etf_code in all_etf_info.keys():
+                        try:
+                            xtdata.download_etf_info([etf_code])
+                        except Exception:
+                            pass
+                logger.info("强制刷新ETF信息缓存")
+            except Exception as e:
+                logger.error(f"强制刷新ETF信息失败: {e}")
+
         etf_code_list = []
         if etf_codes:
             etf_code_list = [code.strip() for code in etf_codes.split(',') if code.strip()]
 
-        # 获取ETF信息
         etf_infos = []
 
         if etf_code_list:
-            # 获取指定ETF的信息
             for etf_code in etf_code_list:
                 info = etf_manager.get_etf_info(etf_code)
                 if info:
                     etf_infos.append(info)
                 else:
-                    # 如果缓存中没有，尝试下载
-                    logger.info(f"缓存中没有ETF信息，尝试下载: {etf_code}")
-                    # 这里可以触发下载逻辑
-                    pass
+                    try:
+                        from xtquant import xtdata
+
+                        xtdata.download_etf_info([etf_code])
+                        etf_data = xtdata.get_etf_info(etf_code)
+
+                        if etf_data:
+                            etf_info = {
+                                "etf_code": etf_code,
+                                "etf_name": etf_data.get("name", f"ETF-{etf_code}"),
+                                "creation_unit": etf_data.get("creation_unit", 1000000),
+                                "cash_component": etf_data.get("cash_component", 0.0),
+                                "estimated_cash": etf_data.get("estimated_cash", 0.0),
+                                "total_value": etf_data.get("total_value", 0.0),
+                                "nav": etf_data.get("nav", 0.0),
+                                "iopv": etf_data.get("iopv", 0.0),
+                                "creation_fee": etf_data.get("creation_fee", 0.001),
+                                "redemption_fee": etf_data.get("redemption_fee", 0.001),
+                                "trading_day": etf_data.get("trading_day", ""),
+                                "update_time": etf_data.get("update_time", datetime.now()),
+                                "status": etf_data.get("status", "normal"),
+                                "components": []
+                            }
+
+                            components_data = etf_data.get("components", [])
+                            for comp in components_data:
+                                component = {
+                                    "stock_code": comp.get("stock_code", ""),
+                                    "stock_name": comp.get("stock_name", ""),
+                                    "quantity": comp.get("quantity", 0),
+                                    "cash_substitute": comp.get("cash_substitute", 0.0),
+                                    "premium_rate": comp.get("premium_rate", 0.0),
+                                    "discount_rate": comp.get("discount_rate", 0.0),
+                                    "market_value": comp.get("market_value", 0.0)
+                                }
+                                etf_info["components"].append(component)
+
+                            etf_manager.set_etf_info(etf_code, etf_info)
+                            etf_infos.append(etf_info)
+
+                            logger.info(f"缓存中没有ETF信息，已下载: {etf_code}")
+                    except Exception as e:
+                        logger.error(f"下载ETF信息失败: {etf_code}, 错误: {e}")
         else:
-            # 获取所有ETF信息
             etf_infos = etf_manager.get_all_etfs()
 
-            # 如果缓存为空，触发下载
             if not etf_infos:
-                logger.info("缓存为空，触发ETF信息下载")
-                # 触发下载所有ETF
-                # 这里可以调用下载接口
-                pass
+                try:
+                    from xtquant import xtdata
 
-        # 应用过滤条件
+                    all_etf_info = xtdata.get_etf_info()
+                    if all_etf_info:
+                        for etf_code in all_etf_info.keys():
+                            try:
+                                xtdata.download_etf_info([etf_code])
+                                etf_data = xtdata.get_etf_info(etf_code)
+
+                                if etf_data:
+                                    etf_info = {
+                                        "etf_code": etf_code,
+                                        "etf_name": etf_data.get("name", f"ETF-{etf_code}"),
+                                        "creation_unit": etf_data.get("creation_unit", 1000000),
+                                        "cash_component": etf_data.get("cash_component", 0.0),
+                                        "estimated_cash": etf_data.get("estimated_cash", 0.0),
+                                        "total_value": etf_data.get("total_value", 0.0),
+                                        "nav": etf_data.get("nav", 0.0),
+                                        "iopv": etf_data.get("iopv", 0.0),
+                                        "creation_fee": etf_data.get("creation_fee", 0.001),
+                                        "redemption_fee": etf_data.get("redemption_fee", 0.001),
+                                        "trading_day": etf_data.get("trading_day", ""),
+                                        "update_time": etf_data.get("update_time", datetime.now()),
+                                        "status": etf_data.get("status", "normal"),
+                                        "components": []
+                                    }
+
+                                    components_data = etf_data.get("components", [])
+                                    for comp in components_data:
+                                        component = {
+                                            "stock_code": comp.get("stock_code", ""),
+                                            "stock_name": comp.get("stock_name", ""),
+                                            "quantity": comp.get("quantity", 0),
+                                            "cash_substitute": comp.get("cash_substitute", 0.0),
+                                            "premium_rate": comp.get("premium_rate", 0.0),
+                                            "discount_rate": comp.get("discount_rate", 0.0),
+                                            "market_value": comp.get("market_value", 0.0)
+                                        }
+                                        etf_info["components"].append(component)
+
+                                    etf_manager.set_etf_info(etf_code, etf_info)
+                                    etf_infos.append(etf_info)
+                            except Exception as e:
+                                logger.error(f"下载ETF信息失败: {etf_code}, 错误: {e}")
+
+                        logger.info("缓存为空，已触发ETF信息下载")
+                except Exception as e:
+                    logger.error(f"获取所有ETF信息失败: {e}")
+
         filtered_infos = []
         for info in etf_infos:
-            # 状态过滤
             if status and info.get("status") != status:
                 continue
 
-            # 交易所过滤
             if exchange:
                 etf_code = info.get("etf_code", "")
                 if exchange == "SH" and not etf_code.endswith(".SH"):
@@ -308,7 +394,6 @@ async def get_etf_info(
 
             filtered_infos.append(info)
 
-        # 转换为响应模型
         etf_responses = []
         for info in filtered_infos:
             components = info.get("components", [])
@@ -361,62 +446,81 @@ async def get_etf_detail(
     - **force_refresh**: 是否强制刷新缓存
     """
     try:
-        # 如果强制刷新，清理该ETF的缓存
         if force_refresh:
             etf_manager.clear_cache(etf_code)
 
-            # 触发下载该ETF
-            logger.info(f"强制刷新ETF信息: {etf_code}")
-            # 这里可以触发下载逻辑
+            try:
+                from xtquant import xtdata
 
-        # 获取ETF信息
+                xtdata.download_etf_info([etf_code])
+                logger.info(f"强制刷新ETF信息: {etf_code}")
+            except Exception as e:
+                logger.error(f"强制刷新ETF信息失败: {etf_code}, 错误: {e}")
+
         info = etf_manager.get_etf_info(etf_code)
 
         if not info:
-            # 尝试下载
-            logger.info(f"ETF信息不存在，尝试下载: {etf_code}")
-            # 这里可以触发下载逻辑
+            try:
+                from xtquant import xtdata
 
-            # 模拟信息
-            info = {
-                "etf_code": etf_code,
-                "etf_name": f"ETF-{etf_code}",
-                "creation_unit": 1000000,
-                "cash_component": 1000.0,
-                "estimated_cash": 500.0,
-                "total_value": 1000000.0,
-                "nav": 1.0,
-                "iopv": 1.01,
-                "creation_fee": 0.001,
-                "redemption_fee": 0.001,
-                "trading_day": datetime.now().strftime("%Y%m%d"),
-                "update_time": datetime.now(),
-                "status": "normal",
-                "components": [
-                    {
-                        "stock_code": "600000.SH",
-                        "stock_name": "浦发银行",
-                        "quantity": 10000,
-                        "cash_substitute": 0.0,
-                        "premium_rate": 0.0,
-                        "discount_rate": 0.0,
-                        "market_value": 100000.0
-                    },
-                    {
-                        "stock_code": "000001.SZ",
-                        "stock_name": "平安银行",
-                        "quantity": 8000,
-                        "cash_substitute": 0.0,
-                        "premium_rate": 0.0,
-                        "discount_rate": 0.0,
-                        "market_value": 80000.0
+                xtdata.download_etf_info([etf_code])
+                etf_data = xtdata.get_etf_info(etf_code)
+
+                logger.info(f"ETF信息不存在，已下载: {etf_code}")
+
+                if etf_data:
+                    info = {
+                        "etf_code": etf_code,
+                        "etf_name": etf_data.get("name", f"ETF-{etf_code}"),
+                        "creation_unit": etf_data.get("creation_unit", 1000000),
+                        "cash_component": etf_data.get("cash_component", 0.0),
+                        "estimated_cash": etf_data.get("estimated_cash", 0.0),
+                        "total_value": etf_data.get("total_value", 0.0),
+                        "nav": etf_data.get("nav", 0.0),
+                        "iopv": etf_data.get("iopv", 0.0),
+                        "creation_fee": etf_data.get("creation_fee", 0.001),
+                        "redemption_fee": etf_data.get("redemption_fee", 0.001),
+                        "trading_day": etf_data.get("trading_day", ""),
+                        "update_time": etf_data.get("update_time", datetime.now()),
+                        "status": etf_data.get("status", "normal"),
+                        "components": []
                     }
-                ]
-            }
 
-            etf_manager.set_etf_info(etf_code, info)
+                    components_data = etf_data.get("components", [])
+                    for comp in components_data:
+                        component = {
+                            "stock_code": comp.get("stock_code", ""),
+                            "stock_name": comp.get("stock_name", ""),
+                            "quantity": comp.get("quantity", 0),
+                            "cash_substitute": comp.get("cash_substitute", 0.0),
+                            "premium_rate": comp.get("premium_rate", 0.0),
+                            "discount_rate": comp.get("discount_rate", 0.0),
+                            "market_value": comp.get("market_value", 0.0)
+                        }
+                        info["components"].append(component)
 
-        # 转换为响应模型
+                    etf_manager.set_etf_info(etf_code, info)
+                else:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=ETFErrorResponse(
+                            error="ETF_NOT_FOUND",
+                            message=f"ETF信息不存在: {etf_code}",
+                            etf_code=etf_code
+                        )
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"获取ETF信息失败: {etf_code}, 错误: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=ErrorResponse(
+                        error="INTERNAL_ERROR",
+                        message=f"获取ETF信息失败: {str(e)}"
+                    )
+                )
+
         components = info.get("components", [])
 
         etf_info_response = ETFInfoResponse(
@@ -466,23 +570,87 @@ async def get_etf_premium_discount(
     返回ETF的溢价率、折价率等信息
     """
     try:
-        # 获取ETF信息
         info = etf_manager.get_etf_info(etf_code)
 
         if not info:
-            raise HTTPException(
-                status_code=404,
-                detail=ETFErrorResponse(
-                    error="ETF_NOT_FOUND",
-                    message=f"ETF信息不存在: {etf_code}",
-                    etf_code=etf_code
+            try:
+                from xtquant import xtdata
+
+                xtdata.download_etf_info([etf_code])
+                etf_data = xtdata.get_etf_info(etf_code)
+
+                if etf_data:
+                    etf_info = {
+                        "etf_code": etf_code,
+                        "etf_name": etf_data.get("name", f"ETF-{etf_code}"),
+                        "creation_unit": etf_data.get("creation_unit", 1000000),
+                        "cash_component": etf_data.get("cash_component", 0.0),
+                        "estimated_cash": etf_data.get("estimated_cash", 0.0),
+                        "total_value": etf_data.get("total_value", 0.0),
+                        "nav": etf_data.get("nav", 0.0),
+                        "iopv": etf_data.get("iopv", 0.0),
+                        "creation_fee": etf_data.get("creation_fee", 0.001),
+                        "redemption_fee": etf_data.get("redemption_fee", 0.001),
+                        "trading_day": etf_data.get("trading_day", ""),
+                        "update_time": etf_data.get("update_time", datetime.now()),
+                        "status": etf_data.get("status", "normal"),
+                        "components": []
+                    }
+
+                    components_data = etf_data.get("components", [])
+                    for comp in components_data:
+                        component = {
+                            "stock_code": comp.get("stock_code", ""),
+                            "stock_name": comp.get("stock_name", ""),
+                            "quantity": comp.get("quantity", 0),
+                            "cash_substitute": comp.get("cash_substitute", 0.0),
+                            "premium_rate": comp.get("premium_rate", 0.0),
+                            "discount_rate": comp.get("discount_rate", 0.0),
+                            "market_value": comp.get("market_value", 0.0)
+                        }
+                        etf_info["components"].append(component)
+
+                    etf_manager.set_etf_info(etf_code, etf_info)
+                    info = etf_info
+                else:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=ETFErrorResponse(
+                            error="ETF_NOT_FOUND",
+                            message=f"ETF信息不存在: {etf_code}",
+                            etf_code=etf_code
+                        )
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"获取ETF信息失败: {etf_code}, 错误: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=ErrorResponse(
+                        error="INTERNAL_ERROR",
+                        message=f"获取ETF信息失败: {str(e)}"
+                    )
                 )
+
+        try:
+            from xtquant import xtdata
+
+            market_data = xtdata.get_market_data_ex(
+                stocks=[etf_code],
+                periods=['tick'],
+                count=1
             )
 
-        # 模拟市场数据
-        # 在实际应用中，这里需要获取实时市场数据
-        market_price = 1.02  # 模拟市场价格
-        iopv = info.get("iopv", 1.01)
+            if market_data and len(market_data) > 0:
+                tick_data = market_data[0]
+                market_price = tick_data.get("last_price", info.get("iopv", 1.0))
+            else:
+                market_price = info.get("iopv", 1.0)
+        except Exception:
+            market_price = info.get("iopv", 1.0)
+
+        iopv = info.get("iopv", 1.0)
 
         premium_rate = 0.0
         discount_rate = 0.0
@@ -492,8 +660,7 @@ async def get_etf_premium_discount(
         else:
             discount_rate = (iopv - market_price) / iopv * 100
 
-        # 判断套利机会（简单阈值判断）
-        arbitrage_threshold = 0.5  # 0.5%
+        arbitrage_threshold = 0.5
         arbitrage_opportunity = premium_rate > arbitrage_threshold or discount_rate > arbitrage_threshold
 
         return ETFPremiumDiscount(
@@ -534,24 +701,99 @@ async def get_arbitrage_signals(
     返回符合条件的套利信号
     """
     try:
-        # 获取所有ETF信息
         etf_infos = etf_manager.get_all_etfs()
+
+        if not etf_infos:
+            try:
+                from xtquant import xtdata
+
+                all_etf_info = xtdata.get_etf_info()
+                if all_etf_info:
+                    for etf_code in all_etf_info.keys():
+                        try:
+                            xtdata.download_etf_info([etf_code])
+                            etf_data = xtdata.get_etf_info(etf_code)
+
+                            if etf_data:
+                                etf_info = {
+                                    "etf_code": etf_code,
+                                    "etf_name": etf_data.get("name", f"ETF-{etf_code}"),
+                                    "creation_unit": etf_data.get("creation_unit", 1000000),
+                                    "cash_component": etf_data.get("cash_component", 0.0),
+                                    "estimated_cash": etf_data.get("estimated_cash", 0.0),
+                                    "total_value": etf_data.get("total_value", 0.0),
+                                    "nav": etf_data.get("nav", 0.0),
+                                    "iopv": etf_data.get("iopv", 0.0),
+                                    "creation_fee": etf_data.get("creation_fee", 0.001),
+                                    "redemption_fee": etf_data.get("redemption_fee", 0.001),
+                                    "trading_day": etf_data.get("trading_day", ""),
+                                    "update_time": etf_data.get("update_time", datetime.now()),
+                                    "status": etf_data.get("status", "normal"),
+                                    "components": []
+                                }
+
+                                components_data = etf_data.get("components", [])
+                                for comp in components_data:
+                                    component = {
+                                        "stock_code": comp.get("stock_code", ""),
+                                        "stock_name": comp.get("stock_name", ""),
+                                        "quantity": comp.get("quantity", 0),
+                                        "cash_substitute": comp.get("cash_substitute", 0.0),
+                                        "premium_rate": comp.get("premium_rate", 0.0),
+                                        "discount_rate": comp.get("discount_rate", 0.0),
+                                        "market_value": comp.get("market_value", 0.0)
+                                    }
+                                    etf_info["components"].append(component)
+
+                                etf_manager.set_etf_info(etf_code, etf_info)
+                                etf_infos.append(etf_info)
+                        except Exception as e:
+                            logger.error(f"下载ETF信息失败: {etf_code}, 错误: {e}")
+            except Exception as e:
+                logger.error(f"获取所有ETF信息失败: {e}")
 
         if not etf_infos:
             return []
 
         signals = []
 
-        # 模拟套利信号分析
-        for info in etf_infos[:5]:  # 只分析前5个
+        for info in etf_infos[:5]:
             etf_code = info.get("etf_code")
 
-            # 模拟分析结果
             signal_types = ["creation_arbitrage", "redemption_arbitrage"]
 
             for signal_type in signal_types:
-                # 模拟预期收益率
-                expected_return = 0.5  # 0.5%
+                try:
+                    from xtquant import xtdata
+
+                    market_data = xtdata.get_market_data_ex(
+                        stocks=[etf_code],
+                        periods=['tick'],
+                        count=1
+                    )
+
+                    if market_data and len(market_data) > 0:
+                        tick_data = market_data[0]
+                        market_price = tick_data.get("last_price", info.get("iopv", 1.0))
+                    else:
+                        market_price = info.get("iopv", 1.0)
+                except Exception:
+                    market_price = info.get("iopv", 1.0)
+
+                iopv = info.get("iopv", 1.0)
+
+                premium_rate = 0.0
+                discount_rate = 0.0
+
+                if market_price > iopv:
+                    premium_rate = (market_price - iopv) / iopv * 100
+                else:
+                    discount_rate = (iopv - market_price) / iopv * 100
+
+                if signal_type == "creation_arbitrage":
+                    expected_return = premium_rate
+                else:
+                    expected_return = discount_rate
 
                 if expected_return >= min_return:
                     signal = ETFArbitrageSignal(
@@ -560,7 +802,7 @@ async def get_arbitrage_signals(
                         timestamp=datetime.now(),
                         expected_return=expected_return,
                         risk_level="low",
-                        components=info.get("components", [])[:3],  # 只返回前3个成分股
+                        components=info.get("components", [])[:3],
                         market_conditions={
                             "liquidity": "high",
                             "volatility": "low",
