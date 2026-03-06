@@ -24,6 +24,18 @@ from schemas.quote import (
     QuoteSupportedPeriodsResponse,
     QuotePeriodInfo
 )
+from schemas.etf import (
+    ETFDownloadRequest,
+    ETFDownloadResponse,
+    ETFInfoResponse,
+    ETFDetailResponse,
+    ETFListResponse,
+    ETFQueryRequest,
+    ETFComponentRequest,
+    ETFErrorResponse,
+    ETFPremiumDiscount,
+    ETFArbitrageSignal
+)
 
 __all__ = [
     'AssetResponse',
@@ -46,5 +58,15 @@ __all__ = [
     'QuoteUnsubscribeResponse',
     'QuoteCallbackData',
     'QuoteSupportedPeriodsResponse',
-    'QuotePeriodInfo'
+    'QuotePeriodInfo',
+    'ETFDownloadRequest',
+    'ETFDownloadResponse',
+    'ETFInfoResponse',
+    'ETFDetailResponse',
+    'ETFListResponse',
+    'ETFQueryRequest',
+    'ETFComponentRequest',
+    'ETFErrorResponse',
+    'ETFPremiumDiscount',
+    'ETFArbitrageSignal'
 ]
