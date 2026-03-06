@@ -14,6 +14,16 @@ from schemas.asset import (
     QueryPositionsRequest,
     QueryTradesRequest
 )
+from schemas.quote import (
+    QuoteSubscribeRequest,
+    QuoteSubscribeResponse,
+    QuoteDataResponse,
+    QuoteUnsubscribeRequest,
+    QuoteUnsubscribeResponse,
+    QuoteCallbackData,
+    QuoteSupportedPeriodsResponse,
+    QuotePeriodInfo
+)
 
 __all__ = [
     'AssetResponse',
@@ -28,5 +38,13 @@ __all__ = [
     'CancelOrderRequest',
     'QueryOrdersRequest',
     'QueryPositionsRequest',
-    'QueryTradesRequest'
+    'QueryTradesRequest',
+    'QuoteSubscribeRequest',
+    'QuoteSubscribeResponse',
+    'QuoteDataResponse',
+    'QuoteUnsubscribeRequest',
+    'QuoteUnsubscribeResponse',
+    'QuoteCallbackData',
+    'QuoteSupportedPeriodsResponse',
+    'QuotePeriodInfo'
 ]
