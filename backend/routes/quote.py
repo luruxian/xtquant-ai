@@ -395,13 +395,14 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
 
 
 @router.get("/test/{stock_code}")
-async def test_quote(stock_code: str, period: str = "1d", count: int = 10):
+async def test_quote(stock_code: str, period: str = "1d", count: int = 10, fields: str = ""):
     """
     测试获取行情数据（不订阅）
 
-    - **stock_code**: 合约代码
-    - **period**: 周期，默认 '1d'
+    - **stock_code**: 合约代码，格式如 '600000.SH'
+    - **period**: 周期，默认 '1d'，可选：tick, 1m, 5m, 15m, 30m, 1h, 1d, 1w, 1mon, 1q, 1hy, 1y
     - **count**: 数据个数，默认 10
+    - **fields**: 返回字段列表，逗号分隔，为空则返回全部字段
     """
     try:
         qmt_path = get_qmt_path()
@@ -420,37 +421,91 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10):
         # 导入xtquant相关模块
         from xtquant import xtdata
 
-        # 获取行情数据
-        # 注意：这里需要根据xtquant的实际API调用获取数据
-        # data = xtdata.get_market_data([stock_code], period=period, count=count)
+        # 解析字段列表
+        field_list = []
+        if fields:
+            field_list = [f.strip() for f in fields.split(',') if f.strip()]
 
-        # 模拟数据返回
-        import time
-        mock_data = []
-        base_time = int(time.time()) - count * 86400  # 假设日线数据
+        # 根据API文档，对于数据获取接口，需要先确保MiniQmt已有所需数据
+        # 如果本地没有数据，先调用download_history_data补充数据
+        # 下载历史行情数据，增量下载
+        xtdata.download_history_data(
+            stock_code=stock_code,
+            period=period,
+            start_time='',
+            end_time='',
+            incrementally=True
+        )
 
-        for i in range(count):
-            mock_data.append({
-                "time": base_time + i * 86400,
-                "open": 10.0 + i * 0.1,
-                "high": 10.5 + i * 0.1,
-                "low": 9.8 + i * 0.1,
-                "close": 10.2 + i * 0.1,
-                "volume": 1000000 + i * 10000,
-                "amount": 10000000 + i * 100000,
-                "pre_close": 10.0 + (i-1) * 0.1 if i > 0 else 10.0,
-                "change": 0.2,
-                "change_rate": 2.0,
-                "turnover_rate": 1.5,
-                "pe_ratio": 15.0,
-                "pb_ratio": 1.8,
-                "market_value": 1000000000.0
-            })
+        # 使用get_market_data从缓存获取行情数据
+        # 根据API文档，get_market_data是从缓存获取行情数据的主动接口
+        data_dict = xtdata.get_market_data(
+            field_list=field_list,
+            stock_list=[stock_code],
+            period=period,
+            start_time='',
+            end_time='',
+            count=count,
+            dividend_type='none',
+            fill_data=True
+        )
+
+        # 处理返回数据
+        # 根据period不同，返回格式不同
+        # K线周期(1m, 5m, 1d等)返回dict { field1 : pd.DataFrame, ... }
+        # tick分笔周期返回dict { stock1 : np.ndarray, ... }
+        
+        result_data = []
+        
+        if period == 'tick':
+            # tick分笔数据
+            if stock_code in data_dict:
+                tick_data = data_dict[stock_code]
+                # tick数据是np.ndarray，按时间戳升序排列
+                for item in tick_data:
+                    result_data.append(dict(item))
+        else:
+            # K线数据
+            # data_dict格式: { field1 : pd.DataFrame, field2 : pd.DataFrame, ... }
+            # DataFrame的index为stock_list，columns为time_list
+            if field_list:
+                # 有指定字段
+                for field in field_list:
+                    if field in data_dict:
+                        df = data_dict[field]
+                        if stock_code in df.index:
+                            series = df.loc[stock_code]
+                            # 将每列数据转换为字典列表
+                            for time_idx in series.index:
+                                record = {
+                                    "time": str(time_idx),
+                                    "stock_code": stock_code,
+                                    "period": period
+                                }
+                                for f in field_list:
+                                    if f in data_dict and stock_code in data_dict[f].index:
+                                        record[f] = data_dict[f].loc[stock_code, time_idx]
+                                result_data.append(record)
+            else:
+                # 返回全部字段
+                for field, df in data_dict.items():
+                    if stock_code in df.index:
+                        series = df.loc[stock_code]
+                        for time_idx in series.index:
+                            record = {
+                                "time": str(time_idx),
+                                "stock_code": stock_code,
+                                "period": period
+                            }
+                            for f, f_df in data_dict.items():
+                                if stock_code in f_df.index:
+                                    record[f] = f_df.loc[stock_code, time_idx]
+                            result_data.append(record)
 
         return QuoteDataResponse(
             stock_code=stock_code,
             period=period,
-            data=mock_data
+            data=result_data
         )
 
     except HTTPException:
