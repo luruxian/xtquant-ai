@@ -1,7 +1,7 @@
 """订单管理路由"""
 from fastapi import APIRouter, HTTPException, Query, Path
 from typing import Optional, List
-from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest
+from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest, AsyncOrderResponse, AsyncCancelOrderRequest, AsyncCancelOrderResponse
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
@@ -118,6 +118,198 @@ async def create_order(request: OrderRequest):
             offset_flag=order.offset_flag
         )
         
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="INTERNAL_ERROR",
+                message=str(e)
+            )
+        )
+
+
+@router.post("/async", response_model=AsyncOrderResponse)
+async def create_order_async(request: OrderRequest):
+    """
+    创建异步订单（异步下单）
+
+    - **account_id**: 资金账号
+    - **stock_code**: 证券代码，如 '600000.SH'
+    - **order_type**: 委托类型
+    - **volume**: 委托数量
+    - **price_type**: 报价类型
+    - **price**: 委托价格
+    - **strategy_name**: 策略名称（可选）
+    - **remark**: 备注（可选）
+
+    示例：
+    股票资金账号1000000365对浦发银行买入1000股，使用限价价格10.5元，委托备注为'order_test'
+    注意：order_type和price_type参数需要传入对应的整数值，例如：
+    - order_type: 23 (买入), 24 (卖出) 等
+    - price_type: 0 (限价), 1 (市价) 等
+    """
+    try:
+        qmt_path = get_qmt_path()
+
+        if not validate_qmt_path(qmt_path):
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    error="PATH_NOT_FOUND",
+                    message=f"QMT 客户端路径不存在: {qmt_path}"
+                )
+            )
+
+        session_id = get_session_id()
+
+        from xtquant.xttype import StockAccount
+        from xtquant import xtconstant
+
+        qmt_service = QMTService(qmt_path, session_id)
+        trader = qmt_service.get_shared_trader()
+        if not trader:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="TRADER_NOT_AVAILABLE",
+                    message="获取全局交易实例失败"
+                )
+            )
+
+        acc = StockAccount(request.account_id)
+
+        # 确保账户已订阅
+        if not qmt_service.ensure_account_subscribed(request.account_id):
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="SUBSCRIBE_FAILED",
+                    message=f"订阅账户失败: {request.account_id}"
+                )
+            )
+
+        # 调用异步下单接口
+        seq = trader.order_stock_async(
+            acc,
+            request.stock_code,
+            request.order_type,
+            request.volume,
+            request.price_type,
+            request.price,
+            request.strategy_name,
+            request.remark
+        )
+
+        if seq == -1:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="ASYNC_ORDER_FAILED",
+                    message="异步下单失败，seq为-1"
+                )
+            )
+
+        # 返回异步下单响应
+        return AsyncOrderResponse(
+            seq=seq,
+            message="异步下单请求已提交",
+            account_id=request.account_id,
+            stock_code=request.stock_code,
+            order_type=request.order_type,
+            order_volume=request.volume,
+            price_type=request.price_type,
+            price=request.price,
+            strategy_name=request.strategy_name,
+            order_remark=request.remark
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="INTERNAL_ERROR",
+                message=str(e)
+            )
+        )
+
+
+@router.delete("/async", response_model=AsyncCancelOrderResponse)
+async def cancel_order_async(request: AsyncCancelOrderRequest):
+    """
+    异步取消订单（异步撤单）
+
+    - **account_id**: 资金账号
+    - **order_id**: 订单编号
+
+    示例：
+    股票资金账号1000000365对订单编号为order_id的委托进行异步撤单
+    account = StockAccount('1000000365')
+    order_id = 100
+    cancel_result = xt_trader.cancel_order_stock_async(account, order_id)
+    """
+    try:
+        qmt_path = get_qmt_path()
+
+        if not validate_qmt_path(qmt_path):
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    error="PATH_NOT_FOUND",
+                    message=f"QMT 客户端路径不存在: {qmt_path}"
+                )
+            )
+
+        session_id = get_session_id()
+
+        from xtquant.xttype import StockAccount
+
+        qmt_service = QMTService(qmt_path, session_id)
+        trader = qmt_service.get_shared_trader()
+        if not trader:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="TRADER_NOT_AVAILABLE",
+                    message="获取全局交易实例失败"
+                )
+            )
+
+        acc = StockAccount(request.account_id)
+
+        # 确保账户已订阅
+        if not qmt_service.ensure_account_subscribed(request.account_id):
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="SUBSCRIBE_FAILED",
+                    message=f"订阅账户失败: {request.account_id}"
+                )
+            )
+
+        # 调用异步撤单接口
+        cancel_seq = trader.cancel_order_stock_async(acc, request.order_id)
+
+        if cancel_seq == -1:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="ASYNC_CANCEL_FAILED",
+                    message="异步撤单失败，cancel_seq为-1"
+                )
+            )
+
+        # 返回异步撤单响应
+        return AsyncCancelOrderResponse(
+            cancel_seq=cancel_seq,
+            message="异步撤单请求已提交",
+            account_id=request.account_id,
+            order_id=request.order_id
+        )
+
     except HTTPException:
         raise
     except Exception as e:

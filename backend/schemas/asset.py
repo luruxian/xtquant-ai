@@ -161,3 +161,31 @@ class AccountInfoResponse(BaseModel):
     """账户信息响应模型"""
     account_id: str
     account_type: int
+
+
+class AsyncOrderResponse(BaseModel):
+    """异步报单响应模型"""
+    seq: int
+    message: str
+    account_id: str
+    stock_code: str
+    order_type: int
+    order_volume: int
+    price_type: int
+    price: float
+    strategy_name: str
+    order_remark: str
+
+
+class AsyncCancelOrderRequest(BaseModel):
+    """异步撤单请求模型"""
+    account_id: str
+    order_id: int
+
+
+class AsyncCancelOrderResponse(BaseModel):
+    """异步撤单响应模型"""
+    cancel_seq: int
+    message: str
+    account_id: str
+    order_id: int
