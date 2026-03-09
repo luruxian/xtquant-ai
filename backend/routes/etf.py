@@ -275,7 +275,7 @@ async def get_etf_info(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=f"获取ETF列表失败: {str(e)}"
-            )
+            ).dict()
         )
 
 
@@ -349,7 +349,7 @@ async def get_etf_detail(
                     detail=ErrorResponse(
                         error="INTERNAL_ERROR",
                         message=f"获取ETF信息失败: {str(e)}"
-                    )
+                    ).dict()
                 )
 
         components = info.get("components", [])
@@ -385,7 +385,7 @@ async def get_etf_detail(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 

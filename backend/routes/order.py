@@ -35,7 +35,7 @@ async def create_order(request: OrderRequest):
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
         
         session_id = get_session_id()
@@ -51,7 +51,7 @@ async def create_order(request: OrderRequest):
                 detail=ErrorResponse(
                     error="TRADER_NOT_AVAILABLE",
                     message="获取全局交易实例失败"
-                )
+                ).dict()
             )
 
         acc = StockAccount(request.account_id)
@@ -63,7 +63,7 @@ async def create_order(request: OrderRequest):
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
                     message=f"订阅账户失败: {request.account_id}"
-                )
+                ).dict()
             )
 
         order_id = trader.order_stock(
@@ -83,18 +83,18 @@ async def create_order(request: OrderRequest):
                 detail=ErrorResponse(
                     error="ORDER_FAILED",
                     message="下单失败"
-                )
+                ).dict()
             )
 
         order = trader.query_stock_order(acc, order_id)
-        
+
         if order is None:
             raise HTTPException(
                 status_code=404,
                 detail=ErrorResponse(
                     error="ORDER_NOT_FOUND",
                     message=f"订单 {order_id} 不存在"
-                )
+                ).dict()
             )
         
         return OrderResponse(
@@ -126,7 +126,7 @@ async def create_order(request: OrderRequest):
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -159,7 +159,7 @@ async def create_order_async(request: OrderRequest):
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -175,7 +175,7 @@ async def create_order_async(request: OrderRequest):
                 detail=ErrorResponse(
                     error="TRADER_NOT_AVAILABLE",
                     message="获取全局交易实例失败"
-                )
+                ).dict()
             )
 
         acc = StockAccount(request.account_id)
@@ -187,7 +187,7 @@ async def create_order_async(request: OrderRequest):
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
                     message=f"订阅账户失败: {request.account_id}"
-                )
+                ).dict()
             )
 
         # 调用异步下单接口
@@ -208,7 +208,7 @@ async def create_order_async(request: OrderRequest):
                 detail=ErrorResponse(
                     error="ASYNC_ORDER_FAILED",
                     message="异步下单失败，seq为-1"
-                )
+                ).dict()
             )
 
         # 返回异步下单响应
@@ -233,7 +233,7 @@ async def create_order_async(request: OrderRequest):
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -260,7 +260,7 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -275,7 +275,7 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
                 detail=ErrorResponse(
                     error="TRADER_NOT_AVAILABLE",
                     message="获取全局交易实例失败"
-                )
+                ).dict()
             )
 
         acc = StockAccount(request.account_id)
@@ -287,7 +287,7 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
                     message=f"订阅账户失败: {request.account_id}"
-                )
+                ).dict()
             )
 
         # 调用异步撤单接口
@@ -299,7 +299,7 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
                 detail=ErrorResponse(
                     error="ASYNC_CANCEL_FAILED",
                     message="异步撤单失败，cancel_seq为-1"
-                )
+                ).dict()
             )
 
         # 返回异步撤单响应
@@ -318,7 +318,7 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -339,7 +339,7 @@ async def cancel_order(request: CancelOrderRequest):
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
         
         session_id = get_session_id()
@@ -354,7 +354,7 @@ async def cancel_order(request: CancelOrderRequest):
                 detail=ErrorResponse(
                     error="TRADER_NOT_AVAILABLE",
                     message="获取全局交易实例失败"
-                )
+                ).dict()
             )
 
         acc = StockAccount(request.account_id)
@@ -366,7 +366,7 @@ async def cancel_order(request: CancelOrderRequest):
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
                     message=f"订阅账户失败: {request.account_id}"
-                )
+                ).dict()
             )
 
         result = trader.cancel_order_stock(acc, request.order_id)
@@ -377,7 +377,7 @@ async def cancel_order(request: CancelOrderRequest):
                 detail=ErrorResponse(
                     error="CANCEL_FAILED",
                     message=f"撤单失败，订单 {request.order_id} 可能不存在或已撤销"
-                )
+                ).dict()
             )
         
         return {"message": "撤单成功", "order_id": request.order_id, "result": result}
@@ -390,7 +390,7 @@ async def cancel_order(request: CancelOrderRequest):
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -414,7 +414,7 @@ async def query_order(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -435,7 +435,7 @@ async def query_order(
                 detail=ErrorResponse(
                     error="ORDER_NOT_FOUND",
                     message=f"订单 {order_id} 不存在"
-                )
+                ).dict()
             )
 
         return OrderResponse(
@@ -467,7 +467,7 @@ async def query_order(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -496,7 +496,7 @@ async def query_orders(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -546,5 +546,5 @@ async def query_orders(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )

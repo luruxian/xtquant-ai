@@ -32,7 +32,7 @@ async def query_position(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -53,7 +53,7 @@ async def query_position(
                 detail=ErrorResponse(
                     error="POSITION_NOT_FOUND",
                     message=f"股票 {stock_code} 的持仓信息不存在"
-                )
+                ).dict()
             )
 
         return PositionResponse(
@@ -79,7 +79,7 @@ async def query_position(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -101,7 +101,7 @@ async def query_positions(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -145,5 +145,5 @@ async def query_positions(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )

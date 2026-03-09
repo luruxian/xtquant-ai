@@ -35,7 +35,7 @@ async def query_trades(
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -82,5 +82,5 @@ async def query_trades(
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )

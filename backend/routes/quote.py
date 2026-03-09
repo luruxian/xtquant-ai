@@ -110,7 +110,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -127,7 +127,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                 detail=ErrorResponse(
                     error="TRADER_NOT_AVAILABLE",
                     message="获取全局交易实例失败"
-                )
+                ).dict()
             )
 
         # 定义回调函数
@@ -174,7 +174,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                 detail=ErrorResponse(
                     error="SUBSCRIBE_FAILED",
                     message="订阅行情失败"
-                )
+                ).dict()
             )
 
         # 保存订阅信息
@@ -213,7 +213,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
             detail=ErrorResponse(
                 error="MODULE_IMPORT_ERROR",
                 message=f"导入xtquant模块失败: {str(e)}"
-            )
+            ).dict()
         )
     except Exception as e:
         logger.error(f"订阅行情失败: {e}")
@@ -222,7 +222,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -242,7 +242,7 @@ async def unsubscribe_quote(request: QuoteUnsubscribeRequest):
                 detail=ErrorResponse(
                     error="SUBSCRIPTION_NOT_FOUND",
                     message=f"订阅号 {request.subscription_id} 不存在"
-                )
+                ).dict()
             )
 
         # 导入xtquant相关模块
@@ -271,7 +271,7 @@ async def unsubscribe_quote(request: QuoteUnsubscribeRequest):
                 detail=ErrorResponse(
                     error="UNSUBSCRIBE_FAILED",
                     message="取消订阅失败"
-                )
+                ).dict()
             )
 
     except HTTPException:
@@ -283,7 +283,7 @@ async def unsubscribe_quote(request: QuoteUnsubscribeRequest):
             detail=ErrorResponse(
                 error="MODULE_IMPORT_ERROR",
                 message=f"导入xtquant模块失败: {str(e)}"
-            )
+            ).dict()
         )
     except Exception as e:
         logger.error(f"取消订阅失败: {e}")
@@ -292,7 +292,7 @@ async def unsubscribe_quote(request: QuoteUnsubscribeRequest):
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
 
 
@@ -413,7 +413,7 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
                 detail=ErrorResponse(
                     error="PATH_NOT_FOUND",
                     message=f"QMT 客户端路径不存在: {qmt_path}"
-                )
+                ).dict()
             )
 
         session_id = get_session_id()
@@ -517,7 +517,7 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
             detail=ErrorResponse(
                 error="MODULE_IMPORT_ERROR",
                 message=f"导入xtquant模块失败: {str(e)}"
-            )
+            ).dict()
         )
     except Exception as e:
         logger.error(f"获取行情数据失败: {e}")
@@ -526,5 +526,5 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
             detail=ErrorResponse(
                 error="INTERNAL_ERROR",
                 message=str(e)
-            )
+            ).dict()
         )
