@@ -32,6 +32,7 @@ class QuoteSubscriptionManager:
         self.next_subscription_id = 1
         self.websocket_connections: Dict[str, WebSocket] = {}
         self.callback_handlers: Dict[int, Any] = {}
+        self.main_event_loop = None  # 保存主事件循环
 
     def generate_subscription_id(self) -> int:
         """生成订阅ID"""
@@ -74,7 +75,15 @@ class QuoteSubscriptionManager:
 
         for client_id, websocket in self.websocket_connections.items():
             try:
-                asyncio.create_task(websocket.send_json(data))
+                # 使用保存的主事件循环
+                if self.main_event_loop is None:
+                    logger.error("主事件循环未设置，无法发送WebSocket消息")
+                    continue
+
+                asyncio.run_coroutine_threadsafe(
+                    websocket.send_json(data),
+                    self.main_event_loop
+                )
             except Exception as e:
                 logger.error(f"向客户端 {client_id} 发送数据失败: {e}")
                 disconnected_clients.append(client_id)
@@ -134,6 +143,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
         def quote_callback(datas):
             """行情数据回调函数"""
             try:
+                import time
                 for stock_code in datas:
                     data_list = datas[stock_code]
                     if data_list:
@@ -144,7 +154,7 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                                 "stock_code": stock_code,
                                 "period": request.period,
                                 "data": data,
-                                "timestamp": asyncio.get_event_loop().time()
+                                "timestamp": time.time()  # 使用time.time()而不是asyncio的事件循环
                             }
 
                             # 广播到WebSocket连接
@@ -193,6 +203,10 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
 
         # 保存回调处理器引用
         subscription_manager.callback_handlers[api_subscription_id] = quote_callback
+
+        # 设置主事件循环（如果还没有设置）
+        if subscription_manager.main_event_loop is None:
+            subscription_manager.main_event_loop = asyncio.get_event_loop()
 
         logger.info(f"订阅行情成功: stock_code={request.stock_code}, period={request.period}, "
                    f"subscription_id={subscription_id}, api_subscription_id={api_subscription_id}")
