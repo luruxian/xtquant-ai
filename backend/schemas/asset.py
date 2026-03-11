@@ -189,3 +189,21 @@ class AsyncCancelOrderResponse(BaseModel):
     message: str
     account_id: str
     order_id: int
+
+
+class StockOrderRequest(BaseModel):
+    """股票同步报单请求模型"""
+    account: str
+    stock_code: str
+    order_type: int
+    order_volume: int
+    price_type: int
+    price: float
+    strategy_name: str
+    order_remark: str
+
+
+class StockOrderResponse(BaseModel):
+    """股票同步报单响应模型"""
+    order_id: int
+    message: str

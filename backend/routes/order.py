@@ -1,7 +1,7 @@
 """订单管理路由"""
 from fastapi import APIRouter, HTTPException, Query, Path
 from typing import Optional, List
-from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest, AsyncOrderResponse, AsyncCancelOrderRequest, AsyncCancelOrderResponse
+from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest, AsyncOrderResponse, AsyncCancelOrderRequest, AsyncCancelOrderResponse, StockOrderRequest, StockOrderResponse
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
@@ -537,6 +537,105 @@ async def query_orders(
             )
             for order in orders
         ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="INTERNAL_ERROR",
+                message=str(e)
+            ).dict()
+        )
+
+
+@router.post("/stock", response_model=StockOrderResponse)
+async def order_stock(request: StockOrderRequest):
+    """
+    股票同步报单
+
+    对股票进行下单操作
+
+    - **account**: 资金账号
+    - **stock_code**: 证券代码，如'600000.SH'
+    - **order_type**: 委托类型
+    - **order_volume**: 委托数量，股票以'股'为单位，债券以'张'为单位
+    - **price_type**: 报价类型
+    - **price**: 委托价格
+    - **strategy_name**: 策略名称
+    - **order_remark**: 委托备注
+
+    返回：
+    系统生成的订单编号，成功委托后的订单编号为大于0的正整数，如果为-1表示委托失败
+
+    示例：
+    股票资金账号1000000365对浦发银行买入1000股，使用限价价格10.5元, 委托备注为'order_test'
+    """
+    try:
+        qmt_path = get_qmt_path()
+
+        if not validate_qmt_path(qmt_path):
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    error="PATH_NOT_FOUND",
+                    message=f"QMT 客户端路径不存在: {qmt_path}"
+                ).dict()
+            )
+
+        session_id = get_session_id()
+
+        from xtquant.xttype import StockAccount
+
+        qmt_service = QMTService(qmt_path, session_id)
+        trader = qmt_service.get_shared_trader()
+        if not trader:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="TRADER_NOT_AVAILABLE",
+                    message="获取全局交易实例失败"
+                ).dict()
+            )
+
+        acc = StockAccount(request.account)
+
+        # 确保账户已订阅
+        if not qmt_service.ensure_account_subscribed(request.account):
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="SUBSCRIBE_FAILED",
+                    message=f"订阅账户失败: {request.account}"
+                ).dict()
+            )
+
+        # 调用同步下单接口
+        order_id = trader.order_stock(
+            acc,
+            request.stock_code,
+            request.order_type,
+            request.order_volume,
+            request.price_type,
+            request.price,
+            request.strategy_name,
+            request.order_remark
+        )
+
+        # 根据文档要求，返回订单编号
+        # 如果order_id为None或小于等于0，表示失败
+        if order_id is None or order_id <= 0:
+            # 返回-1表示委托失败
+            return StockOrderResponse(
+                order_id=-1,
+                message="委托失败"
+            )
+
+        return StockOrderResponse(
+            order_id=order_id,
+            message="委托成功"
+        )
 
     except HTTPException:
         raise
