@@ -42,7 +42,7 @@ async def create_order(request: OrderRequest):
         
         from xtquant.xttype import StockAccount
         from xtquant import xtconstant
-        
+
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
         if not trader:
@@ -54,7 +54,8 @@ async def create_order(request: OrderRequest):
                 ).dict()
             )
 
-        acc = StockAccount(request.account_id)
+        # 创建账户对象，明确指定账户类型为STOCK
+        acc = StockAccount(request.account_id, 'STOCK')
 
         # 确保账户已订阅
         if not qmt_service.ensure_account_subscribed(request.account_id):
@@ -247,7 +248,7 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
 
     示例：
     股票资金账号1000000365对订单编号为order_id的委托进行异步撤单
-    account = StockAccount('1000000365')
+    account = StockAccount('1000000365', 'STOCK')
     order_id = 100
     cancel_result = xt_trader.cancel_order_stock_async(account, order_id)
     """
@@ -278,7 +279,8 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
                 ).dict()
             )
 
-        acc = StockAccount(request.account_id)
+        # 创建账户对象，明确指定账户类型为STOCK
+        acc = StockAccount(request.account_id, 'STOCK')
 
         # 确保账户已订阅
         if not qmt_service.ensure_account_subscribed(request.account_id):
@@ -345,7 +347,7 @@ async def cancel_order(request: CancelOrderRequest):
         session_id = get_session_id()
         
         from xtquant.xttype import StockAccount
-        
+
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
         if not trader:
@@ -357,7 +359,8 @@ async def cancel_order(request: CancelOrderRequest):
                 ).dict()
             )
 
-        acc = StockAccount(request.account_id)
+        # 创建账户对象，明确指定账户类型为STOCK
+        acc = StockAccount(request.account_id, 'STOCK')
 
         # 确保账户已订阅
         if not qmt_service.ensure_account_subscribed(request.account_id):
@@ -484,7 +487,7 @@ async def query_orders(
 
     示例：
     查询股票资金账号1000000365对应的当日所有委托
-    account = StockAccount('1000000365')
+    account = StockAccount('1000000365', 'STOCK')
     orders = xt_trader.query_stock_orders(account, False)
     """
     try:
@@ -587,6 +590,7 @@ async def order_stock(request: StockOrderRequest):
         session_id = get_session_id()
 
         from xtquant.xttype import StockAccount
+        from xtquant import xtconstant
 
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
@@ -599,7 +603,8 @@ async def order_stock(request: StockOrderRequest):
                 ).dict()
             )
 
-        acc = StockAccount(request.account)
+        # 创建账户对象，明确指定账户类型为STOCK
+        acc = StockAccount(request.account, 'STOCK')
 
         # 确保账户已订阅
         if not qmt_service.ensure_account_subscribed(request.account):

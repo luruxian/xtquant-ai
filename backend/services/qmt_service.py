@@ -68,8 +68,8 @@ class QMTService:
         if not self.ensure_account_subscribed(account_id):
             raise Exception(f"订阅账户失败: {account_id}")
 
-        # 创建账户对象
-        account = StockAccount(account_id)
+        # 创建账户对象，明确指定账户类型为STOCK
+        account = StockAccount(account_id, 'STOCK')
 
         # 执行查询
         try:
@@ -106,8 +106,8 @@ class QMTService:
                     results[account_id] = {"error": "订阅账户失败"}
                     continue
 
-                # 创建账户对象并执行查询
-                account = StockAccount(account_id)
+                # 创建账户对象并执行查询，明确指定账户类型为STOCK
+                account = StockAccount(account_id, 'STOCK')
                 result = query_func(trader, account, *args, **kwargs)
                 results[account_id] = result
 

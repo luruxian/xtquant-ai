@@ -23,7 +23,7 @@ async def query_trades(
 
     示例：
     查询股票资金账号1000000365对应的当日所有成交
-    account = StockAccount('1000000365')
+    account = StockAccount('1000000365', 'STOCK')
     trades = xt_trader.query_stock_trades(account)
     """
     try:

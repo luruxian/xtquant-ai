@@ -135,7 +135,8 @@ class TraderSingleton:
                 return False
 
             try:
-                account = StockAccount(account_id)
+                # 创建账户对象，明确指定账户类型为STOCK
+                account = StockAccount(account_id, 'STOCK')
                 subscribe_result = trader.subscribe(account)
 
                 if subscribe_result == 0:

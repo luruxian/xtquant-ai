@@ -92,13 +92,30 @@ API可能返回以下HTTP状态码：
 }
 ```
 
+## 常量定义
+
+为了确保参数正确，建议使用 `xtconstant` 模块中的常量：
+
+```python
+from xtquant import xtconstant
+
+# 委托类型
+STOCK_BUY = xtconstant.STOCK_BUY  # 23 - 买入
+STOCK_SELL = xtconstant.STOCK_SELL  # 24 - 卖出
+
+# 报价类型
+FIX_PRICE = xtconstant.FIX_PRICE  # 0 - 限价
+LATEST_PRICE = xtconstant.LATEST_PRICE  # 1 - 最新价（市价）
+```
+
 ## 使用示例
 
-### Python示例
+### Python示例（使用常量）
 
 ```python
 import requests
 import json
+from xtquant import xtconstant
 
 def order_stock():
     url = "http://localhost:8000/api/v1/order/stock"
@@ -106,9 +123,9 @@ def order_stock():
     data = {
         "account": "1000000365",
         "stock_code": "600000.SH",
-        "order_type": 23,  # 买入
+        "order_type": xtconstant.STOCK_BUY,  # 使用常量
         "order_volume": 1000,
-        "price_type": 0,  # 限价
+        "price_type": xtconstant.FIX_PRICE,  # 使用常量
         "price": 10.5,
         "strategy_name": "my_strategy",
         "order_remark": "test_order"
@@ -127,6 +144,42 @@ def order_stock():
 
 if __name__ == "__main__":
     order_stock()
+```
+
+### Python示例（市价下单）
+
+```python
+import requests
+import json
+from xtquant import xtconstant
+
+def order_stock_market():
+    url = "http://localhost:8000/api/v1/order/stock"
+
+    data = {
+        "account": "1000000365",
+        "stock_code": "600000.SH",
+        "order_type": xtconstant.STOCK_BUY,
+        "order_volume": 1000,
+        "price_type": xtconstant.LATEST_PRICE,  # 市价
+        "price": -1,  # 市价时价格传-1
+        "strategy_name": "market_order",
+        "order_remark": "market_buy_test"
+    }
+
+    response = requests.post(url, json=data)
+
+    if response.status_code == 200:
+        result = response.json()
+        if result["order_id"] > 0:
+            print(f"市价下单成功，订单编号: {result['order_id']}")
+        else:
+            print("市价下单失败")
+    else:
+        print(f"请求失败: {response.text}")
+
+if __name__ == "__main__":
+    order_stock_market()
 ```
 
 ## 测试
