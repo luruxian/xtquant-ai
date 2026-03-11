@@ -1,7 +1,7 @@
 """订单管理路由"""
 from fastapi import APIRouter, HTTPException, Query, Path
 from typing import Optional, List
-from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest, AsyncOrderResponse, AsyncCancelOrderRequest, AsyncCancelOrderResponse, StockOrderRequest, StockOrderResponse
+from schemas.asset import OrderResponse, ErrorResponse, OrderRequest, CancelOrderRequest, QueryOrdersRequest, AsyncOrderResponse, AsyncCancelOrderRequest, AsyncCancelOrderResponse, StockOrderRequest, StockOrderResponse, StockCancelOrderRequest, StockCancelOrderResponse
 from services.qmt_service import QMTService
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
@@ -641,6 +641,103 @@ async def order_stock(request: StockOrderRequest):
             order_id=order_id,
             message="委托成功"
         )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="INTERNAL_ERROR",
+                message=str(e)
+            ).dict()
+        )
+
+
+@router.post("/cancel", response_model=StockCancelOrderResponse)
+async def cancel_order_stock(request: StockCancelOrderRequest):
+    """
+    股票同步撤单
+
+    根据订单编号对委托进行撤单操作
+
+    - **account**: 资金账号
+    - **order_id**: 同步下单接口返回的订单编号,对于期货来说，是order结构中的order_sysid字段
+
+    返回：
+    返回是否成功发出撤单指令，0: 成功, -1: 表示撤单失败
+
+    示例：
+    股票资金账号1000000365对订单编号为order_id的委托进行撤单
+
+    account = StockAccount('1000000365')
+    order_id = 100
+    #xt_trader为XtQuant API实例对象
+    cancel_result = xt_trader.cancel_order_stock(account, order_id)
+    """
+    try:
+        qmt_path = get_qmt_path()
+
+        if not validate_qmt_path(qmt_path):
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    error="PATH_NOT_FOUND",
+                    message=f"QMT 客户端路径不存在: {qmt_path}"
+                ).dict()
+            )
+
+        session_id = get_session_id()
+
+        from xtquant.xttype import StockAccount
+
+        qmt_service = QMTService(qmt_path, session_id)
+        trader = qmt_service.get_shared_trader()
+        if not trader:
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="TRADER_NOT_AVAILABLE",
+                    message="获取全局交易实例失败"
+                ).dict()
+            )
+
+        # 创建账户对象，明确指定账户类型为STOCK
+        acc = StockAccount(request.account, 'STOCK')
+
+        # 确保账户已订阅
+        if not qmt_service.ensure_account_subscribed(request.account):
+            raise HTTPException(
+                status_code=500,
+                detail=ErrorResponse(
+                    error="SUBSCRIBE_FAILED",
+                    message=f"订阅账户失败: {request.account}"
+                ).dict()
+            )
+
+        # 调用同步撤单接口
+        result = trader.cancel_order_stock(acc, request.order_id)
+
+        # 根据文档要求，返回撤单结果
+        # 如果result为None，表示撤单失败
+        if result is None:
+            return StockCancelOrderResponse(
+                result=-1,
+                message="撤单失败"
+            )
+
+        # 检查result是否为0（成功）
+        if result == 0:
+            return StockCancelOrderResponse(
+                result=0,
+                message="撤单成功"
+            )
+        else:
+            # 如果result不是0，也视为失败
+            return StockCancelOrderResponse(
+                result=-1,
+                message=f"撤单失败，返回码: {result}"
+            )
 
     except HTTPException:
         raise

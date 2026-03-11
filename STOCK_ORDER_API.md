@@ -182,14 +182,172 @@ if __name__ == "__main__":
     order_stock_market()
 ```
 
+## 股票同步撤单API
+
+### 端点
+
+**POST** `/api/v1/order/cancel`
+
+根据订单编号对委托进行撤单操作。
+
+#### 请求参数
+
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|--------|------|------|------|------|
+| account | string | 是 | 资金账号 | "1000000365" |
+| order_id | int | 是 | 同步下单接口返回的订单编号 | 100 |
+
+#### 响应格式
+
+```json
+{
+  "result": 0,
+  "message": "撤单成功"
+}
+```
+
+#### 响应说明
+
+- `result`: 撤单结果
+  - `0`: 成功发出撤单指令
+  - `-1`: 撤单失败
+- `message`: 撤单结果消息
+
+#### 示例请求
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/order/cancel" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account": "1000000365",
+    "order_id": 100
+  }'
+```
+
+#### 示例响应
+
+成功响应：
+```json
+{
+  "result": 0,
+  "message": "撤单成功"
+}
+```
+
+失败响应：
+```json
+{
+  "result": -1,
+  "message": "撤单失败"
+}
+```
+
+### Python示例
+
+```python
+import requests
+import json
+
+def cancel_stock_order():
+    url = "http://localhost:8000/api/v1/order/cancel"
+
+    data = {
+        "account": "1000000365",
+        "order_id": 100  # 从order_stock接口返回的订单编号
+    }
+
+    response = requests.post(url, json=data)
+
+    if response.status_code == 200:
+        result = response.json()
+        if result["result"] == 0:
+            print("撤单成功")
+        else:
+            print(f"撤单失败: {result['message']}")
+    else:
+        print(f"请求失败: {response.text}")
+
+if __name__ == "__main__":
+    cancel_stock_order()
+```
+
+### 完整工作流程示例
+
+```python
+import requests
+import json
+from xtquant import xtconstant
+
+def order_and_cancel_workflow():
+    """完整的下单和撤单工作流程"""
+
+    # 1. 下单
+    order_url = "http://localhost:8000/api/v1/order/stock"
+    order_data = {
+        "account": "1000000365",
+        "stock_code": "600000.SH",
+        "order_type": xtconstant.STOCK_BUY,
+        "order_volume": 100,
+        "price_type": xtconstant.FIX_PRICE,
+        "price": 10.5,
+        "strategy_name": "workflow_test",
+        "order_remark": "test_order"
+    }
+
+    order_response = requests.post(order_url, json=order_data)
+
+    if order_response.status_code != 200:
+        print(f"下单失败: {order_response.text}")
+        return
+
+    order_result = order_response.json()
+    order_id = order_result.get("order_id")
+
+    if order_id <= 0:
+        print(f"下单失败: {order_result.get('message', '未知错误')}")
+        return
+
+    print(f"下单成功，订单编号: {order_id}")
+
+    # 2. 撤单
+    cancel_url = "http://localhost:8000/api/v1/order/cancel"
+    cancel_data = {
+        "account": "1000000365",
+        "order_id": order_id
+    }
+
+    cancel_response = requests.post(cancel_url, json=cancel_data)
+
+    if cancel_response.status_code != 200:
+        print(f"撤单请求失败: {cancel_response.text}")
+        return
+
+    cancel_result = cancel_response.json()
+
+    if cancel_result.get("result") == 0:
+        print("撤单成功")
+    else:
+        print(f"撤单失败: {cancel_result.get('message', '未知错误')}")
+
+if __name__ == "__main__":
+    order_and_cancel_workflow()
+```
+
 ## 测试
 
 ### 运行测试脚本
 
-项目根目录下提供了一个测试脚本：
+项目根目录下提供了测试脚本：
 
 ```bash
-python test_stock_order.py
+# 测试股票同步报单
+python test_stock_order_fixed.py
+
+# 测试股票同步撤单
+python test_stock_cancel.py
+
+# 测试完整的工作流程
+python test_stock_cancel.py
 ```
 
 ### 手动测试

@@ -207,3 +207,15 @@ class StockOrderResponse(BaseModel):
     """股票同步报单响应模型"""
     order_id: int
     message: str
+
+
+class StockCancelOrderRequest(BaseModel):
+    """股票同步撤单请求模型"""
+    account: str
+    order_id: int
+
+
+class StockCancelOrderResponse(BaseModel):
+    """股票同步撤单响应模型"""
+    result: int
+    message: str
