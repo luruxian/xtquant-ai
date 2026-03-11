@@ -324,77 +324,77 @@ async def cancel_order_async(request: AsyncCancelOrderRequest):
         )
 
 
-@router.delete("", response_model=dict)
-async def cancel_order(request: CancelOrderRequest):
-    """
-    取消订单（撤单）
-    
-    - **account_id**: 资金账号
-    - **order_id**: 订单编号
-    """
-    try:
-        qmt_path = get_qmt_path()
-        
-        if not validate_qmt_path(qmt_path):
-            raise HTTPException(
-                status_code=404,
-                detail=ErrorResponse(
-                    error="PATH_NOT_FOUND",
-                    message=f"QMT 客户端路径不存在: {qmt_path}"
-                ).dict()
-            )
-        
-        session_id = get_session_id()
-        
-        from xtquant.xttype import StockAccount
-
-        qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.get_shared_trader()
-        if not trader:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="TRADER_NOT_AVAILABLE",
-                    message="获取全局交易实例失败"
-                ).dict()
-            )
-
-        # 创建账户对象，明确指定账户类型为STOCK
-        acc = StockAccount(request.account_id, 'STOCK')
-
-        # 确保账户已订阅
-        if not qmt_service.ensure_account_subscribed(request.account_id):
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅账户失败: {request.account_id}"
-                ).dict()
-            )
-
-        result = trader.cancel_order_stock(acc, request.order_id)
-        
-        if result is None:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="CANCEL_FAILED",
-                    message=f"撤单失败，订单 {request.order_id} 可能不存在或已撤销"
-                ).dict()
-            )
-        
-        return {"message": "撤单成功", "order_id": request.order_id, "result": result}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=ErrorResponse(
-                error="INTERNAL_ERROR",
-                message=str(e)
-            ).dict()
-        )
+# @router.delete("", response_model=dict)
+# async def cancel_order(request: CancelOrderRequest):
+#     """
+#     取消订单（撤单）
+#
+#     - **account_id**: 资金账号
+#     - **order_id**: 订单编号
+#     """
+#     try:
+#         qmt_path = get_qmt_path()
+#
+#         if not validate_qmt_path(qmt_path):
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=ErrorResponse(
+#                     error="PATH_NOT_FOUND",
+#                     message=f"QMT 客户端路径不存在: {qmt_path}"
+#                 ).dict()
+#             )
+#
+#         session_id = get_session_id()
+#
+#         from xtquant.xttype import StockAccount
+#
+#         qmt_service = QMTService(qmt_path, session_id)
+#         trader = qmt_service.get_shared_trader()
+#         if not trader:
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=ErrorResponse(
+#                     error="TRADER_NOT_AVAILABLE",
+#                     message="获取全局交易实例失败"
+#                 ).dict()
+#             )
+#
+#         # 创建账户对象，明确指定账户类型为STOCK
+#         acc = StockAccount(request.account_id, 'STOCK')
+#
+#         # 确保账户已订阅
+#         if not qmt_service.ensure_account_subscribed(request.account_id):
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=ErrorResponse(
+#                     error="SUBSCRIBE_FAILED",
+#                     message=f"订阅账户失败: {request.account_id}"
+#                 ).dict()
+#             )
+#
+#         result = trader.cancel_order_stock(acc, request.order_id)
+#
+#         if result is None:
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=ErrorResponse(
+#                     error="CANCEL_FAILED",
+#                     message=f"撤单失败，订单 {request.order_id} 可能不存在或已撤销"
+#                 ).dict()
+#             )
+#
+#         return {"message": "撤单成功", "order_id": request.order_id, "result": result}
+#
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=ErrorResponse(
+#                 error="INTERNAL_ERROR",
+#                 message=str(e)
+#             ).dict()
+#         )
 
 
 @router.get("/{order_id}", response_model=OrderResponse)

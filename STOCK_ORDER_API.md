@@ -388,7 +388,7 @@ python test_stock_cancel.py
 
 - `POST /api/v1/order`: 通用下单接口（返回完整订单信息）
 - `POST /api/v1/order/async`: 异步下单接口
-- `DELETE /api/v1/order`: 撤单接口
+- `POST /api/v1/order/cancel`: 股票同步撤单接口（返回0/-1格式）
 - `GET /api/v1/order`: 查询订单接口
 
 ## 更新日志
