@@ -11,6 +11,8 @@ from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 import logging
 
+from .qmt_callback import QMTCallback
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +71,7 @@ class TraderSingleton:
 
                 # 创建交易实例
                 self._trader = XtQuantTrader(qmt_path, session_id)
-                self._trader.register_callback(XtQuantTraderCallback())
+                self._trader.register_callback(QMTCallback())
 
                 # 启动交易客户端
                 self._trader.start()
