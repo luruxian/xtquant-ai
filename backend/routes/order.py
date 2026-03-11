@@ -238,90 +238,90 @@ async def create_order_async(request: OrderRequest):
         )
 
 
-@router.delete("/async", response_model=AsyncCancelOrderResponse)
-async def cancel_order_async(request: AsyncCancelOrderRequest):
-    """
-    异步取消订单（异步撤单）
-
-    - **account_id**: 资金账号
-    - **order_id**: 订单编号
-
-    示例：
-    股票资金账号1000000365对订单编号为order_id的委托进行异步撤单
-    account = StockAccount('1000000365', 'STOCK')
-    order_id = 100
-    cancel_result = xt_trader.cancel_order_stock_async(account, order_id)
-    """
-    try:
-        qmt_path = get_qmt_path()
-
-        if not validate_qmt_path(qmt_path):
-            raise HTTPException(
-                status_code=404,
-                detail=ErrorResponse(
-                    error="PATH_NOT_FOUND",
-                    message=f"QMT 客户端路径不存在: {qmt_path}"
-                ).dict()
-            )
-
-        session_id = get_session_id()
-
-        from xtquant.xttype import StockAccount
-
-        qmt_service = QMTService(qmt_path, session_id)
-        trader = qmt_service.get_shared_trader()
-        if not trader:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="TRADER_NOT_AVAILABLE",
-                    message="获取全局交易实例失败"
-                ).dict()
-            )
-
-        # 创建账户对象，明确指定账户类型为STOCK
-        acc = StockAccount(request.account_id, 'STOCK')
-
-        # 确保账户已订阅
-        if not qmt_service.ensure_account_subscribed(request.account_id):
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="SUBSCRIBE_FAILED",
-                    message=f"订阅账户失败: {request.account_id}"
-                ).dict()
-            )
-
-        # 调用异步撤单接口
-        cancel_seq = trader.cancel_order_stock_async(acc, request.order_id)
-
-        if cancel_seq == -1:
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error="ASYNC_CANCEL_FAILED",
-                    message="异步撤单失败，cancel_seq为-1"
-                ).dict()
-            )
-
-        # 返回异步撤单响应
-        return AsyncCancelOrderResponse(
-            cancel_seq=cancel_seq,
-            message="异步撤单请求已提交",
-            account_id=request.account_id,
-            order_id=request.order_id
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=ErrorResponse(
-                error="INTERNAL_ERROR",
-                message=str(e)
-            ).dict()
-        )
+# @router.delete("/async", response_model=AsyncCancelOrderResponse)
+# async def cancel_order_async(request: AsyncCancelOrderRequest):
+#     """
+#     异步取消订单（异步撤单）
+#
+#     - **account_id**: 资金账号
+#     - **order_id**: 订单编号
+#
+#     示例：
+#     股票资金账号1000000365对订单编号为order_id的委托进行异步撤单
+#     account = StockAccount('1000000365', 'STOCK')
+#     order_id = 100
+#     cancel_result = xt_trader.cancel_order_stock_async(account, order_id)
+#     """
+#     try:
+#         qmt_path = get_qmt_path()
+#
+#         if not validate_qmt_path(qmt_path):
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=ErrorResponse(
+#                     error="PATH_NOT_FOUND",
+#                     message=f"QMT 客户端路径不存在: {qmt_path}"
+#                 ).dict()
+#             )
+#
+#         session_id = get_session_id()
+#
+#         from xtquant.xttype import StockAccount
+#
+#         qmt_service = QMTService(qmt_path, session_id)
+#         trader = qmt_service.get_shared_trader()
+#         if not trader:
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=ErrorResponse(
+#                     error="TRADER_NOT_AVAILABLE",
+#                     message="获取全局交易实例失败"
+#                 ).dict()
+#             )
+#
+#         # 创建账户对象，明确指定账户类型为STOCK
+#         acc = StockAccount(request.account_id, 'STOCK')
+#
+#         # 确保账户已订阅
+#         if not qmt_service.ensure_account_subscribed(request.account_id):
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=ErrorResponse(
+#                     error="SUBSCRIBE_FAILED",
+#                     message=f"订阅账户失败: {request.account_id}"
+#                 ).dict()
+#             )
+#
+#         # 调用异步撤单接口
+#         cancel_seq = trader.cancel_order_stock_async(acc, request.order_id)
+#
+#         if cancel_seq == -1:
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=ErrorResponse(
+#                     error="ASYNC_CANCEL_FAILED",
+#                     message="异步撤单失败，cancel_seq为-1"
+#                 ).dict()
+#             )
+#
+#         # 返回异步撤单响应
+#         return AsyncCancelOrderResponse(
+#             cancel_seq=cancel_seq,
+#             message="异步撤单请求已提交",
+#             account_id=request.account_id,
+#             order_id=request.order_id
+#         )
+#
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=ErrorResponse(
+#                 error="INTERNAL_ERROR",
+#                 message=str(e)
+#             ).dict()
+#         )
 
 
 # @router.delete("", response_model=dict)
