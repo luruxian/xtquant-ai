@@ -89,27 +89,45 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
             }, client_id, channel="quote")
             return
 
-        # 这里需要调用quote.py中的订阅逻辑
-        # 由于quote.py中的订阅逻辑比较复杂，我们暂时只发送确认消息
-        # 实际集成时需要调用quote.py的subscribe_quote函数
+        # 导入必要的模块
+        from schemas.quote import QuoteSubscribeRequest
+        from routes.quote import subscribe_quote
 
-        # 模拟订阅成功
-        subscription_id = 1000  # 模拟订阅ID
+        # 创建订阅请求对象
+        request = QuoteSubscribeRequest(
+            stock_code=stock_code,
+            period=period,
+            start_time=start_time,
+            end_time=end_time,
+            count=count
+        )
 
-        # 记录客户端订阅了行情频道
-        websocket_manager.subscribe_channel(client_id, "quote")
+        # 调用quote.py中的订阅逻辑
+        try:
+            response = await subscribe_quote(request)
+            
+            # 记录客户端订阅了行情频道
+            websocket_manager.subscribe_channel(client_id, "quote")
 
-        await websocket_manager.send_personal_message({
-            "type": "subscription_confirmed",
-            "data": {
-                "subscription_id": subscription_id,
-                "stock_code": stock_code,
-                "period": period,
-                "message": "行情订阅成功"
-            }
-        }, client_id, channel="quote")
+            await websocket_manager.send_personal_message({
+                "type": "subscription_confirmed",
+                "data": {
+                    "subscription_id": response.subscription_id,
+                    "stock_code": stock_code,
+                    "period": period,
+                    "message": "行情订阅成功"
+                }
+            }, client_id, channel="quote")
 
-        print(f"客户端 {client_id} 订阅了行情: stock_code={stock_code}, period={period}")
+            print(f"客户端 {client_id} 订阅了行情: stock_code={stock_code}, period={period}")
+        except Exception as sub_error:
+            await websocket_manager.send_personal_message({
+                "type": "error",
+                "data": {
+                    "error": "SUBSCRIPTION_FAILED",
+                    "message": f"订阅失败: {str(sub_error)}"
+                }
+            }, client_id, channel="quote")
 
     except Exception as e:
         await websocket_manager.send_personal_message({
