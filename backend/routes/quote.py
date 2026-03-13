@@ -375,13 +375,16 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
         # 根据API文档，对于数据获取接口，需要先确保MiniQmt已有所需数据
         # 如果本地没有数据，先调用download_history_data补充数据
         # 下载历史行情数据，增量下载
-        xtdata.download_history_data(
-            stock_code=stock_code,
-            period=period,
-            start_time='',
-            end_time='',
-            incrementally=True
-        )
+        try:
+            xtdata.download_history_data(
+                stock_code=stock_code,
+                period=period,
+                start_time='',
+                end_time='',
+                incrementally=True
+            )
+        except Exception as download_error:
+            logger.warning(f"下载行情数据失败，尝试直接获取: {download_error}")
 
         # 使用get_market_data从缓存获取行情数据
         # 根据API文档，get_market_data是从缓存获取行情数据的主动接口
