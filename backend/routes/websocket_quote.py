@@ -26,7 +26,8 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
         while True:
             # 接收客户端消息
             try:
-                data = await websocket.receive_json(timeout=30.0)
+                # 使用 asyncio.wait_for 实现超时
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
 
                 # 处理客户端消息
                 message_type = data.get("type")
