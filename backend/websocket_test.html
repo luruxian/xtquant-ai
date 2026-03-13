@@ -123,7 +123,7 @@
             </div>
             <div class="input-group">
                 <label for="serverUrl">服务器地址:</label>
-                <input type="text" id="serverUrl" value="ws://localhost:8000" placeholder="输入WebSocket服务器地址">
+                <input type="text" id="serverUrl" value="ws://129.211.50.62" placeholder="输入WebSocket服务器地址">
             </div>
             <button id="connectBtn" onclick="connectWebSocket()">连接WebSocket</button>
             <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>断开连接</button>
@@ -160,8 +160,8 @@
             <div class="input-group">
                 <label for="priceType">报价类型:</label>
                 <select id="priceType">
-                    <option value="0">限价</option>
-                    <option value="1">市价</option>
+                    <option value="11">限价</option>
+                    <option value="5">市价</option>
                 </select>
             </div>
             <div class="input-group">
@@ -310,7 +310,7 @@
 
             // 在实际应用中，这里应该调用后端API
             // 这里只是模拟，实际推送由后端完成
-            fetch('http://localhost:8000/api/v1/order/stock', {
+            fetch('http://129.211.50.62/api/v1/order/stock', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -340,7 +340,7 @@
             addMessage(`模拟撤单请求: ${JSON.stringify(cancelData)}`, 'info');
 
             // 在实际应用中，这里应该调用后端API
-            fetch('http://localhost:8000/api/v1/order/cancel', {
+            fetch('http://129.211.50.62/api/v1/order/cancel', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

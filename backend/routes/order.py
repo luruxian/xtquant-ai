@@ -18,12 +18,12 @@ router = APIRouter(
 async def create_order(request: OrderRequest):
     """
     创建订单（下单）
-    
+
     - **account_id**: 资金账号
     - **stock_code**: 证券代码，如 '600000.SH'
-    - **order_type**: 委托类型
+    - **order_type**: 委托类型（买入23，卖出24）
     - **volume**: 委托数量
-    - **price_type**: 报价类型
+    - **price_type**: 报价类型（市价设定5，限价指定11）
     - **price**: 委托价格
     - **strategy_name**: 策略名称（可选）
     - **remark**: 备注（可选）
@@ -140,18 +140,18 @@ async def create_order_async(request: OrderRequest):
 
     - **account_id**: 资金账号
     - **stock_code**: 证券代码，如 '600000.SH'
-    - **order_type**: 委托类型
+    - **order_type**: 委托类型（买入23，卖出24）
     - **volume**: 委托数量
-    - **price_type**: 报价类型
+    - **price_type**: 报价类型（市价设定5，限价指定11）
     - **price**: 委托价格
     - **strategy_name**: 策略名称（可选）
     - **remark**: 备注（可选）
 
     示例：
-    股票资金账号1000000365对浦发银行买入1000股，使用限价价格10.5元，委托备注为'order_test'
+    股票资金账号99158392对浦发银行买入1000股，使用限价价格10.5元，委托备注为'order_test'
     注意：order_type和price_type参数需要传入对应的整数值，例如：
     - order_type: 23 (买入), 24 (卖出) 等
-    - price_type: 0 (限价), 1 (市价) 等
+    - price_type: 5 (市价), 11 (限价) 等
     """
     try:
         qmt_path = get_qmt_path()
@@ -249,8 +249,8 @@ async def create_order_async(request: OrderRequest):
 #     - **order_id**: 订单编号
 #
 #     示例：
-#     股票资金账号1000000365对订单编号为order_id的委托进行异步撤单
-#     account = StockAccount('1000000365', 'STOCK')
+#     股票资金账号99158392对订单编号为order_id的委托进行异步撤单
+#     account = StockAccount('99158392', 'STOCK')
 #     order_id = 100
 #     cancel_result = xt_trader.cancel_order_stock_async(account, order_id)
 #     """
@@ -488,8 +488,8 @@ async def query_orders(
     - **cancelable_only**: 仅查询可撤委托，默认为False
 
     示例：
-    查询股票资金账号1000000365对应的当日所有委托
-    account = StockAccount('1000000365', 'STOCK')
+    查询股票资金账号99158392对应的当日所有委托
+    account = StockAccount('99158392', 'STOCK')
     orders = xt_trader.query_stock_orders(account, False)
     """
     try:
@@ -564,9 +564,9 @@ async def order_stock(request: StockOrderRequest):
 
     - **account**: 资金账号
     - **stock_code**: 证券代码，如'600000.SH'
-    - **order_type**: 委托类型
+    - **order_type**: 委托类型（买入23，卖出24）
     - **order_volume**: 委托数量，股票以'股'为单位，债券以'张'为单位
-    - **price_type**: 报价类型
+    - **price_type**: 报价类型（市价设定5，限价指定11）
     - **price**: 委托价格
     - **strategy_name**: 策略名称
     - **order_remark**: 委托备注
@@ -575,7 +575,9 @@ async def order_stock(request: StockOrderRequest):
     系统生成的订单编号，成功委托后的订单编号为大于0的正整数，如果为-1表示委托失败
 
     示例：
-    股票资金账号1000000365对浦发银行买入1000股，使用限价价格10.5元, 委托备注为'order_test'
+    股票资金账号99158392对浦发银行买入1000股，使用限价价格10.5元, 委托备注为'order_test'
+    注意：price_type参数需要传入对应的整数值，例如：
+    - price_type: 5 (市价), 11 (限价) 等
     """
     try:
         qmt_path = get_qmt_path()
@@ -710,9 +712,9 @@ async def cancel_order_stock(request: StockCancelOrderRequest):
     返回是否成功发出撤单指令，0: 成功, -1: 表示撤单失败
 
     示例：
-    股票资金账号1000000365对订单编号为order_id的委托进行撤单
+    股票资金账号99158392对订单编号为order_id的委托进行撤单
 
-    account = StockAccount('1000000365')
+    account = StockAccount('99158392')
     order_id = 100
     #xt_trader为XtQuant API实例对象
     cancel_result = xt_trader.cancel_order_stock(account, order_id)
