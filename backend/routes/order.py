@@ -635,10 +635,9 @@ async def order_stock(request: StockOrderRequest):
         # 根据文档要求，返回订单编号
         # 如果order_id为None或小于等于0，表示失败
         if order_id is None or order_id <= 0:
-            # 推送失败消息
+            # 推送失败消息（使用标准化格式）
             error_message = {
                 "type": "order_result",
-                "timestamp": datetime.now().isoformat(),
                 "data": {
                     "order_id": -1,
                     "account": request.account,
@@ -648,22 +647,20 @@ async def order_stock(request: StockOrderRequest):
                     "price_type": request.price_type,
                     "price": request.price,
                     "success": False,
-                    "message": "委托失败",
-                    "timestamp": datetime.now().isoformat()
+                    "message": "委托失败"
                 }
             }
-            # 推送给客户端（使用账户ID作为客户端ID）
-            await websocket_manager.send_personal_message(error_message, request.account)
+            # 推送给客户端（使用账户ID作为客户端ID，指定order频道）
+            await websocket_manager.send_personal_message(error_message, request.account, channel="order")
 
             return StockOrderResponse(
                 order_id=-1,
                 message="委托失败"
             )
 
-        # 推送成功消息
+        # 推送成功消息（使用标准化格式）
         success_message = {
             "type": "order_result",
-            "timestamp": datetime.now().isoformat(),
             "data": {
                 "order_id": order_id,
                 "account": request.account,
@@ -673,13 +670,12 @@ async def order_stock(request: StockOrderRequest):
                 "price_type": request.price_type,
                 "price": request.price,
                 "success": True,
-                "message": "委托成功",
-                "timestamp": datetime.now().isoformat()
+                "message": "委托成功"
             }
         }
 
-        # 推送给客户端
-        await websocket_manager.send_personal_message(success_message, request.account)
+        # 推送给客户端（指定order频道）
+        await websocket_manager.send_personal_message(success_message, request.account, channel="order")
 
         return StockOrderResponse(
             order_id=order_id,
@@ -774,11 +770,10 @@ async def cancel_order_stock(request: StockCancelOrderRequest):
                     "account": request.account,
                     "result": -1,
                     "success": False,
-                    "message": "撤单失败",
-                    "timestamp": datetime.now().isoformat()
+                    "message": "撤单失败"
                 }
             }
-            await websocket_manager.send_personal_message(cancel_error_message, request.account)
+            await websocket_manager.send_personal_message(cancel_error_message, request.account, channel="order")
 
             return StockCancelOrderResponse(
                 result=-1,
@@ -790,17 +785,15 @@ async def cancel_order_stock(request: StockCancelOrderRequest):
             # 推送撤单成功消息
             cancel_success_message = {
                 "type": "cancel_result",
-                "timestamp": datetime.now().isoformat(),
                 "data": {
                     "order_id": request.order_id,
                     "account": request.account,
                     "result": 0,
                     "success": True,
-                    "message": "撤单成功",
-                    "timestamp": datetime.now().isoformat()
+                    "message": "撤单成功"
                 }
             }
-            await websocket_manager.send_personal_message(cancel_success_message, request.account)
+            await websocket_manager.send_personal_message(cancel_success_message, request.account, channel="order")
 
             return StockCancelOrderResponse(
                 result=0,
@@ -811,17 +804,15 @@ async def cancel_order_stock(request: StockCancelOrderRequest):
             # 推送撤单失败消息
             cancel_fail_message = {
                 "type": "cancel_result",
-                "timestamp": datetime.now().isoformat(),
                 "data": {
                     "order_id": request.order_id,
                     "account": request.account,
                     "result": result,
                     "success": False,
-                    "message": f"撤单失败，返回码: {result}",
-                    "timestamp": datetime.now().isoformat()
+                    "message": f"撤单失败，返回码: {result}"
                 }
             }
-            await websocket_manager.send_personal_message(cancel_fail_message, request.account)
+            await websocket_manager.send_personal_message(cancel_fail_message, request.account, channel="order")
 
             return StockCancelOrderResponse(
                 result=-1,

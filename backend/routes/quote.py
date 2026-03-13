@@ -12,6 +12,7 @@ from schemas.quote import (
 )
 from schemas.asset import ErrorResponse
 from services.qmt_service import QMTService
+from services.websocket_manager import websocket_manager
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
 logger = logging.getLogger(__name__)
@@ -30,9 +31,8 @@ class QuoteSubscriptionManager:
     def __init__(self):
         self.subscriptions: Dict[int, Dict[str, Any]] = {}
         self.next_subscription_id = 1
-        self.websocket_connections: Dict[str, WebSocket] = {}
         self.callback_handlers: Dict[int, Any] = {}
-        self.main_event_loop = None  # 保存主事件循环
+        self.main_event_loop = None  # 保存主事件循环（仍然需要用于异步回调）
 
     def generate_subscription_id(self) -> int:
         """生成订阅ID"""
@@ -60,37 +60,8 @@ class QuoteSubscriptionManager:
         """获取订阅信息"""
         return self.subscriptions.get(subscription_id)
 
-    def add_websocket_connection(self, client_id: str, websocket: WebSocket):
-        """添加WebSocket连接"""
-        self.websocket_connections[client_id] = websocket
-
-    def remove_websocket_connection(self, client_id: str):
-        """移除WebSocket连接"""
-        if client_id in self.websocket_connections:
-            del self.websocket_connections[client_id]
-
-    def broadcast_to_websockets(self, data: Dict[str, Any]):
-        """广播数据到所有WebSocket连接"""
-        disconnected_clients = []
-
-        for client_id, websocket in self.websocket_connections.items():
-            try:
-                # 使用保存的主事件循环
-                if self.main_event_loop is None:
-                    logger.error("主事件循环未设置，无法发送WebSocket消息")
-                    continue
-
-                asyncio.run_coroutine_threadsafe(
-                    websocket.send_json(data),
-                    self.main_event_loop
-                )
-            except Exception as e:
-                logger.error(f"向客户端 {client_id} 发送数据失败: {e}")
-                disconnected_clients.append(client_id)
-
-        # 清理断开的连接
-        for client_id in disconnected_clients:
-            self.remove_websocket_connection(client_id)
+    # 注意：WebSocket连接管理已移至统一的websocket_manager
+    # 行情数据通过websocket_manager.broadcast()方法广播到quote频道
 
 
 # 全局订阅管理器实例
@@ -157,11 +128,20 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                                 "timestamp": time.time()  # 使用time.time()而不是asyncio的事件循环
                             }
 
-                            # 广播到WebSocket连接
-                            subscription_manager.broadcast_to_websockets({
-                                "type": "quote_data",
-                                "data": quote_data
-                            })
+                            # 使用新的WebSocket管理器广播到quote频道
+                            # 注意：这里需要在异步上下文中运行
+                            async def broadcast_quote():
+                                await websocket_manager.broadcast({
+                                    "type": "quote_data",
+                                    "data": quote_data
+                                }, channel="quote")
+
+                            # 在事件循环中运行异步函数
+                            if subscription_manager.main_event_loop:
+                                asyncio.run_coroutine_threadsafe(
+                                    broadcast_quote(),
+                                    subscription_manager.main_event_loop
+                                )
 
                             logger.debug(f"收到行情数据: {stock_code}, 数据长度: {len(data_list)}")
             except Exception as e:
@@ -356,56 +336,8 @@ async def get_active_subscriptions():
     }
 
 
-@router.websocket("/ws/{client_id}")
-async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
-    """
-    WebSocket端点，用于实时接收行情数据
-
-    - **client_id**: 客户端ID，用于标识连接
-    """
-    await websocket.accept()
-    subscription_manager.add_websocket_connection(client_id, websocket)
-
-    logger.info(f"WebSocket连接建立: client_id={client_id}")
-
-    try:
-        # 发送连接确认
-        await websocket.send_json({
-            "type": "connection_established",
-            "client_id": client_id,
-            "message": "WebSocket连接已建立"
-        })
-
-        # 保持连接活跃
-        while True:
-            # 接收客户端消息（心跳或控制消息）
-            try:
-                data = await websocket.receive_json(timeout=30.0)
-
-                # 处理客户端消息
-                if data.get("type") == "ping":
-                    await websocket.send_json({
-                        "type": "pong",
-                        "timestamp": asyncio.get_event_loop().time()
-                    })
-                elif data.get("type") == "subscribe":
-                    # 客户端可以通过WebSocket订阅特定股票
-                    # 这里可以扩展功能
-                    pass
-
-            except asyncio.TimeoutError:
-                # 发送心跳保持连接
-                await websocket.send_json({
-                    "type": "heartbeat",
-                    "timestamp": asyncio.get_event_loop().time()
-                })
-
-    except WebSocketDisconnect:
-        logger.info(f"WebSocket连接断开: client_id={client_id}")
-    except Exception as e:
-        logger.error(f"WebSocket连接错误: client_id={client_id}, error={e}")
-    finally:
-        subscription_manager.remove_websocket_connection(client_id)
+# 注意：旧的WebSocket端点已移除，新的行情WebSocket端点在websocket_quote.py中
+# 新的URL: /ws/quote/{client_id}
 
 
 @router.get("/test/{stock_code}")

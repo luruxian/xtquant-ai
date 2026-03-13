@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket订单推送测试</title>
+    <title>WebSocket统一端点测试</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -113,21 +113,36 @@
 </head>
 <body>
     <div class="container">
-        <h1>WebSocket订单推送测试</h1>
+        <h1>WebSocket统一端点测试</h1>
 
         <div class="section">
             <h2>连接设置</h2>
             <div class="input-group">
-                <label for="clientId">客户端ID (账户ID):</label>
-                <input type="text" id="clientId" value="test_account_123" placeholder="输入账户ID">
-            </div>
-            <div class="input-group">
                 <label for="serverUrl">服务器地址:</label>
                 <input type="text" id="serverUrl" value="ws://129.211.50.62" placeholder="输入WebSocket服务器地址">
             </div>
-            <button id="connectBtn" onclick="connectWebSocket()">连接WebSocket</button>
-            <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>断开连接</button>
-            <div id="connectionStatus" class="status disconnected">未连接</div>
+        </div>
+
+        <div class="section">
+            <h2>订单WebSocket连接</h2>
+            <div class="input-group">
+                <label for="orderClientId">客户端ID (账户ID):</label>
+                <input type="text" id="orderClientId" value="99158392" placeholder="输入账户ID">
+            </div>
+            <button id="connectOrderBtn" onclick="connectOrderWebSocket()">连接订单WebSocket</button>
+            <button id="disconnectOrderBtn" onclick="disconnectOrderWebSocket()" disabled>断开订单连接</button>
+            <div id="orderConnectionStatus" class="status disconnected">订单WebSocket未连接</div>
+        </div>
+
+        <div class="section">
+            <h2>行情WebSocket连接</h2>
+            <div class="input-group">
+                <label for="quoteClientId">客户端ID:</label>
+                <input type="text" id="quoteClientId" value="test_client_001" placeholder="输入客户端ID">
+            </div>
+            <button id="connectQuoteBtn" onclick="connectQuoteWebSocket()">连接行情WebSocket</button>
+            <button id="disconnectQuoteBtn" onclick="disconnectQuoteWebSocket()" disabled>断开行情连接</button>
+            <div id="quoteConnectionStatus" class="status disconnected">行情WebSocket未连接</div>
         </div>
 
         <div class="section">
@@ -137,10 +152,32 @@
         </div>
 
         <div class="section">
+            <h2>行情订阅</h2>
+            <div class="input-group">
+                <label for="quoteStockCode">证券代码:</label>
+                <input type="text" id="quoteStockCode" value="600000.SH" placeholder="例如: 600000.SH">
+            </div>
+            <div class="input-group">
+                <label for="quotePeriod">周期:</label>
+                <select id="quotePeriod">
+                    <option value="1d">日线</option>
+                    <option value="1m">1分钟</option>
+                    <option value="5m">5分钟</option>
+                    <option value="15m">15分钟</option>
+                    <option value="30m">30分钟</option>
+                    <option value="60m">60分钟</option>
+                </select>
+            </div>
+            <button onclick="subscribeQuote()" id="subscribeBtn">订阅行情</button>
+            <button onclick="unsubscribeQuote()" id="unsubscribeBtn" disabled>取消订阅</button>
+            <div id="subscriptionStatus" class="status disconnected">未订阅</div>
+        </div>
+
+        <div class="section">
             <h2>模拟下单</h2>
             <div class="input-group">
                 <label for="account">资金账号:</label>
-                <input type="text" id="account" value="test_account_123">
+                <input type="text" id="account" value="99158392">
             </div>
             <div class="input-group">
                 <label for="stockCode">证券代码:</label>
@@ -182,11 +219,9 @@
     </div>
 
     <script>
-        let websocket = null;
+        let orderWebSocket = null;
+        let quoteWebSocket = null;
         const messagesDiv = document.getElementById('messages');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
 
         function addMessage(message, type = 'info') {
             const now = new Date();
@@ -205,46 +240,47 @@
             messagesDiv.innerHTML = '';
         }
 
-        function connectWebSocket() {
-            const clientId = document.getElementById('clientId').value;
+        function connectOrderWebSocket() {
+            const clientId = document.getElementById('orderClientId').value;
             const serverUrl = document.getElementById('serverUrl').value;
-            const wsUrl = `${serverUrl}/ws/${clientId}`;
+            const wsUrl = `${serverUrl}/ws/order/${clientId}`;
 
-            if (websocket) {
-                addMessage('已有WebSocket连接，请先断开', 'warning');
+            if (orderWebSocket) {
+                addMessage('已有订单WebSocket连接，请先断开', 'warning');
                 return;
             }
 
-            addMessage(`正在连接: ${wsUrl}`, 'info');
+            addMessage(`正在连接订单WebSocket: ${wsUrl}`, 'info');
 
             try {
-                websocket = new WebSocket(wsUrl);
+                orderWebSocket = new WebSocket(wsUrl);
 
-                websocket.onopen = function() {
-                    connectionStatus.className = 'status connected';
-                    connectionStatus.textContent = '已连接';
-                    connectBtn.disabled = true;
-                    disconnectBtn.disabled = false;
-                    addMessage('WebSocket连接成功!', 'success');
+                orderWebSocket.onopen = function() {
+                    document.getElementById('orderConnectionStatus').className = 'status connected';
+                    document.getElementById('orderConnectionStatus').textContent = '订单WebSocket已连接';
+                    document.getElementById('connectOrderBtn').disabled = true;
+                    document.getElementById('disconnectOrderBtn').disabled = false;
+                    addMessage('订单WebSocket连接成功!', 'success');
                 };
 
-                websocket.onclose = function() {
-                    connectionStatus.className = 'status disconnected';
-                    connectionStatus.textContent = '未连接';
-                    connectBtn.disabled = false;
-                    disconnectBtn.disabled = true;
-                    websocket = null;
-                    addMessage('WebSocket连接已关闭', 'info');
+                orderWebSocket.onclose = function() {
+                    document.getElementById('orderConnectionStatus').className = 'status disconnected';
+                    document.getElementById('orderConnectionStatus').textContent = '订单WebSocket未连接';
+                    document.getElementById('connectOrderBtn').disabled = false;
+                    document.getElementById('disconnectOrderBtn').disabled = true;
+                    orderWebSocket = null;
+                    addMessage('订单WebSocket连接已关闭', 'info');
                 };
 
-                websocket.onerror = function(error) {
-                    addMessage(`WebSocket错误: ${error}`, 'error');
+                orderWebSocket.onerror = function(error) {
+                    addMessage(`订单WebSocket错误: ${error}`, 'error');
                 };
 
-                websocket.onmessage = function(event) {
+                orderWebSocket.onmessage = function(event) {
                     try {
                         const data = JSON.parse(event.data);
                         const type = data.type || 'unknown';
+                        const channel = data.channel || 'unknown';
                         const timestamp = data.timestamp || new Date().toISOString();
 
                         let message = '';
@@ -253,45 +289,196 @@
                         if (type === 'order_result') {
                             const orderData = data.data || {};
                             if (orderData.success) {
-                                message = `✅ 订单成功: 订单号 ${orderData.order_id}, ${orderData.message}`;
+                                message = `✅ [订单频道] 订单成功: 订单号 ${orderData.order_id}, ${orderData.message}`;
                                 messageType = 'success';
                             } else {
-                                message = `❌ 订单失败: ${orderData.message}`;
+                                message = `❌ [订单频道] 订单失败: ${orderData.message}`;
                                 messageType = 'error';
                             }
                         } else if (type === 'cancel_result') {
                             const cancelData = data.data || {};
                             if (cancelData.success) {
-                                message = `✅ 撤单成功: 订单号 ${cancelData.order_id}, ${cancelData.message}`;
+                                message = `✅ [订单频道] 撤单成功: 订单号 ${cancelData.order_id}, ${cancelData.message}`;
                                 messageType = 'success';
                             } else {
-                                message = `❌ 撤单失败: ${cancelData.message}`;
+                                message = `❌ [订单频道] 撤单失败: ${cancelData.message}`;
                                 messageType = 'error';
                             }
+                        } else if (type === 'connection_established') {
+                            message = `📡 [订单频道] 连接已建立: ${data.message || '连接成功'}`;
+                            messageType = 'success';
+                        } else if (type === 'heartbeat') {
+                            // 心跳消息，可以忽略或显示
+                            // message = `💓 [订单频道] 心跳: ${JSON.stringify(data.data)}`;
+                            // messageType = 'info';
+                            return; // 不显示心跳消息
                         } else {
-                            message = `收到消息: ${JSON.stringify(data, null, 2)}`;
+                            message = `📨 [订单频道] 收到消息: ${JSON.stringify(data, null, 2)}`;
                         }
 
                         addMessage(message, messageType);
                     } catch (e) {
-                        addMessage(`收到消息: ${event.data}`, 'info');
+                        addMessage(`📨 [订单频道] 收到消息: ${event.data}`, 'info');
                     }
                 };
 
             } catch (e) {
-                addMessage(`连接失败: ${e}`, 'error');
+                addMessage(`订单WebSocket连接失败: ${e}`, 'error');
             }
         }
 
-        function disconnectWebSocket() {
-            if (websocket) {
-                websocket.close();
+        function disconnectOrderWebSocket() {
+            if (orderWebSocket) {
+                orderWebSocket.close();
             }
+        }
+
+        function connectQuoteWebSocket() {
+            const clientId = document.getElementById('quoteClientId').value;
+            const serverUrl = document.getElementById('serverUrl').value;
+            const wsUrl = `${serverUrl}/ws/quote/${clientId}`;
+
+            if (quoteWebSocket) {
+                addMessage('已有行情WebSocket连接，请先断开', 'warning');
+                return;
+            }
+
+            addMessage(`正在连接行情WebSocket: ${wsUrl}`, 'info');
+
+            try {
+                quoteWebSocket = new WebSocket(wsUrl);
+
+                quoteWebSocket.onopen = function() {
+                    document.getElementById('quoteConnectionStatus').className = 'status connected';
+                    document.getElementById('quoteConnectionStatus').textContent = '行情WebSocket已连接';
+                    document.getElementById('connectQuoteBtn').disabled = true;
+                    document.getElementById('disconnectQuoteBtn').disabled = false;
+                    addMessage('行情WebSocket连接成功!', 'success');
+                };
+
+                quoteWebSocket.onclose = function() {
+                    document.getElementById('quoteConnectionStatus').className = 'status disconnected';
+                    document.getElementById('quoteConnectionStatus').textContent = '行情WebSocket未连接';
+                    document.getElementById('connectQuoteBtn').disabled = false;
+                    document.getElementById('disconnectQuoteBtn').disabled = true;
+                    quoteWebSocket = null;
+                    addMessage('行情WebSocket连接已关闭', 'info');
+                };
+
+                quoteWebSocket.onerror = function(error) {
+                    addMessage(`行情WebSocket错误: ${error}`, 'error');
+                };
+
+                quoteWebSocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        const type = data.type || 'unknown';
+                        const channel = data.channel || 'unknown';
+                        const timestamp = data.timestamp || new Date().toISOString();
+
+                        let message = '';
+                        let messageType = 'info';
+
+                        if (type === 'quote_data') {
+                            const quoteData = data.data || {};
+                            message = `📈 [行情频道] 行情数据: ${quoteData.stock_code || '未知'} 价格: ${quoteData.price || 'N/A'}`;
+                            messageType = 'info';
+                        } else if (type === 'subscription_confirmed') {
+                            const subData = data.data || {};
+                            message = `✅ [行情频道] 订阅成功: ${subData.stock_code || '未知'}, ${subData.message || '订阅确认'}`;
+                            messageType = 'success';
+                        } else if (type === 'unsubscription_confirmed') {
+                            const unsubData = data.data || {};
+                            message = `✅ [行情频道] 取消订阅成功: ${unsubData.message || '取消订阅确认'}`;
+                            messageType = 'success';
+                        } else if (type === 'connection_established') {
+                            message = `📡 [行情频道] 连接已建立: ${data.message || '连接成功'}`;
+                            messageType = 'success';
+                        } else if (type === 'heartbeat') {
+                            // 心跳消息，可以忽略或显示
+                            // message = `💓 [行情频道] 心跳: ${JSON.stringify(data.data)}`;
+                            // messageType = 'info';
+                            return; // 不显示心跳消息
+                        } else {
+                            message = `📨 [行情频道] 收到消息: ${JSON.stringify(data, null, 2)}`;
+                        }
+
+                        addMessage(message, messageType);
+                    } catch (e) {
+                        addMessage(`📨 [行情频道] 收到消息: ${event.data}`, 'info');
+                    }
+                };
+
+            } catch (e) {
+                addMessage(`行情WebSocket连接失败: ${e}`, 'error');
+            }
+        }
+
+        function disconnectQuoteWebSocket() {
+            if (quoteWebSocket) {
+                quoteWebSocket.close();
+            }
+        }
+
+        function subscribeQuote() {
+            if (!quoteWebSocket || quoteWebSocket.readyState !== WebSocket.OPEN) {
+                addMessage('请先连接行情WebSocket', 'warning');
+                return;
+            }
+
+            const stockCode = document.getElementById('quoteStockCode').value;
+            const period = document.getElementById('quotePeriod').value;
+
+            if (!stockCode) {
+                addMessage('请输入证券代码', 'warning');
+                return;
+            }
+
+            const subscriptionData = {
+                type: 'subscribe',
+                data: {
+                    stock_code: stockCode,
+                    period: period
+                }
+            };
+
+            addMessage(`发送订阅请求: ${JSON.stringify(subscriptionData)}`, 'info');
+            quoteWebSocket.send(JSON.stringify(subscriptionData));
+
+            // 更新订阅状态
+            document.getElementById('subscriptionStatus').className = 'status connected';
+            document.getElementById('subscriptionStatus').textContent = `已订阅: ${stockCode}`;
+            document.getElementById('subscribeBtn').disabled = true;
+            document.getElementById('unsubscribeBtn').disabled = false;
+        }
+
+        function unsubscribeQuote() {
+            if (!quoteWebSocket || quoteWebSocket.readyState !== WebSocket.OPEN) {
+                addMessage('请先连接行情WebSocket', 'warning');
+                return;
+            }
+
+            const stockCode = document.getElementById('quoteStockCode').value;
+            const subscriptionData = {
+                type: 'unsubscribe',
+                data: {
+                    subscription_id: 1000  // 模拟订阅ID，实际应从订阅响应中获取
+                }
+            };
+
+            addMessage(`发送取消订阅请求: ${JSON.stringify(subscriptionData)}`, 'info');
+            quoteWebSocket.send(JSON.stringify(subscriptionData));
+
+            // 更新订阅状态
+            document.getElementById('subscriptionStatus').className = 'status disconnected';
+            document.getElementById('subscriptionStatus').textContent = '未订阅';
+            document.getElementById('subscribeBtn').disabled = false;
+            document.getElementById('unsubscribeBtn').disabled = true;
         }
 
         function simulateOrder() {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-                addMessage('请先连接WebSocket', 'warning');
+            if (!orderWebSocket || orderWebSocket.readyState !== WebSocket.OPEN) {
+                addMessage('请先连接订单WebSocket', 'warning');
                 return;
             }
 
@@ -310,7 +497,8 @@
 
             // 在实际应用中，这里应该调用后端API
             // 这里只是模拟，实际推送由后端完成
-            fetch('http://129.211.50.62/api/v1/order/stock', {
+            const serverUrl = document.getElementById('serverUrl').value.replace('ws://', 'http://');
+            fetch(`${serverUrl}/api/v1/order/stock`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -327,8 +515,8 @@
         }
 
         function simulateCancel() {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-                addMessage('请先连接WebSocket', 'warning');
+            if (!orderWebSocket || orderWebSocket.readyState !== WebSocket.OPEN) {
+                addMessage('请先连接订单WebSocket', 'warning');
                 return;
             }
 
@@ -340,7 +528,8 @@
             addMessage(`模拟撤单请求: ${JSON.stringify(cancelData)}`, 'info');
 
             // 在实际应用中，这里应该调用后端API
-            fetch('http://129.211.50.62/api/v1/order/cancel', {
+            const serverUrl = document.getElementById('serverUrl').value.replace('ws://', 'http://');
+            fetch(`${serverUrl}/api/v1/order/cancel`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
