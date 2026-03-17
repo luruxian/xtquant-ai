@@ -105,6 +105,39 @@
             background-color: #fff3cd;
             border-left: 4px solid #ffc107;
         }
+        .message-quote {
+            background-color: #e8f4fd;
+            border-left: 4px solid #2196f3;
+        }
+        .quote-details {
+            margin-top: 5px;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .quote-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .quote-label {
+            font-weight: bold;
+            color: #555;
+            min-width: 60px;
+        }
+        .quote-value {
+            color: #333;
+        }
+        .quote-price-up {
+            color: #e53935;
+            font-weight: bold;
+        }
+        .quote-price-down {
+            color: #4caf50;
+            font-weight: bold;
+        }
         .timestamp {
             color: #6c757d;
             font-size: 12px;
@@ -147,6 +180,18 @@
 
         <div class="section">
             <h2>消息日志</h2>
+            <div class="input-group">
+                <label for="displayMode">行情显示模式:</label>
+                <select id="displayMode" onchange="changeDisplayMode()">
+                    <option value="detailed">详细模式</option>
+                    <option value="compact">简洁模式</option>
+                    <option value="raw">原始数据</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="filterStock">过滤股票代码 (留空显示所有):</label>
+                <input type="text" id="filterStock" placeholder="例如: 600000.SH" oninput="applyFilter()">
+            </div>
             <div id="messages" class="messages"></div>
             <button onclick="clearMessages()">清空日志</button>
         </div>
@@ -222,22 +267,210 @@
         let orderWebSocket = null;
         let quoteWebSocket = null;
         const messagesDiv = document.getElementById('messages');
+        let displayMode = 'detailed'; // 默认显示模式
 
-        function addMessage(message, type = 'info') {
+        function addMessage(message, type = 'info', stockCode = '') {
             const now = new Date();
             const timestamp = now.toLocaleTimeString();
             const messageDiv = document.createElement('div');
             messageDiv.className = `message message-${type}`;
+            messageDiv.setAttribute('data-stock', stockCode.toUpperCase());
             messageDiv.innerHTML = `
                 <div class="timestamp">[${timestamp}]</div>
                 <div>${message}</div>
             `;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            // 应用当前过滤
+            applyFilter();
         }
 
         function clearMessages() {
             messagesDiv.innerHTML = '';
+        }
+
+        function changeDisplayMode() {
+            displayMode = document.getElementById('displayMode').value;
+            addMessage(`已切换显示模式: ${displayMode}`, 'info');
+        }
+
+        function applyFilter() {
+            const filterValue = document.getElementById('filterStock').value.trim().toUpperCase();
+            const messages = document.querySelectorAll('.message');
+
+            messages.forEach(msg => {
+                const stockCode = msg.getAttribute('data-stock') || '';
+                if (!filterValue || stockCode.includes(filterValue)) {
+                    msg.style.display = 'block';
+                } else {
+                    msg.style.display = 'none';
+                }
+            });
+        }
+
+        function formatQuoteData(quoteData, klineData) {
+            const stockCode = quoteData.stock_code || '未知';
+            const period = quoteData.period || 'N/A';
+
+            // 格式化时间戳
+            let timeStr = '未知时间';
+            if (klineData.time) {
+                const date = new Date(klineData.time);
+                if (period === '1d') {
+                    timeStr = date.toLocaleDateString('zh-CN');
+                } else {
+                    timeStr = date.toLocaleString('zh-CN', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+            }
+
+            // 计算涨跌幅
+            let change = null;
+            let changePercent = null;
+            let changeClass = '';
+            if (klineData.preClose && klineData.close) {
+                change = klineData.close - klineData.preClose;
+                changePercent = (change / klineData.preClose * 100).toFixed(2);
+                changeClass = change >= 0 ? 'quote-price-up' : 'quote-price-down';
+            }
+
+            // 格式化成交量
+            let volumeStr = 'N/A';
+            if (klineData.volume) {
+                if (klineData.volume >= 100000000) {
+                    volumeStr = (klineData.volume / 100000000).toFixed(2) + '亿手';
+                } else if (klineData.volume >= 10000) {
+                    volumeStr = (klineData.volume / 10000).toFixed(2) + '万手';
+                } else {
+                    volumeStr = klineData.volume.toFixed(0) + '手';
+                }
+            }
+
+            // 格式化成交额
+            let amountStr = 'N/A';
+            if (klineData.amount) {
+                if (klineData.amount >= 100000000) {
+                    amountStr = (klineData.amount / 100000000).toFixed(2) + '亿元';
+                } else if (klineData.amount >= 10000) {
+                    amountStr = (klineData.amount / 10000).toFixed(2) + '万元';
+                } else {
+                    amountStr = klineData.amount.toFixed(0) + '元';
+                }
+            }
+
+            switch (displayMode) {
+                case 'compact':
+                    // 简洁模式
+                    const changeSymbol = change >= 0 ? '📈' : '📉';
+                    return `
+                        <div>📈 ${stockCode} ${timeStr}</div>
+                        <div class="quote-details">
+                            <div class="quote-row">
+                                <span class="quote-label">价格:</span>
+                                <span class="quote-value ${changeClass}">${klineData.close || 'N/A'}</span>
+                                ${change !== null ? `<span class="quote-value ${changeClass}">${changeSymbol} ${changePercent}%</span>` : ''}
+                            </div>
+                            <div class="quote-row">
+                                <span class="quote-label">成交量:</span>
+                                <span class="quote-value">${volumeStr}</span>
+                            </div>
+                        </div>
+                    `;
+
+                case 'raw':
+                    // 原始数据模式
+                    return `
+                        <div>📈 [行情频道] ${stockCode} (${period}) ${timeStr}</div>
+                        <div class="quote-details">
+                            <pre style="margin: 0; font-size: 12px;">${JSON.stringify({quoteData, klineData}, null, 2)}</pre>
+                        </div>
+                    `;
+
+                case 'detailed':
+                default:
+                    // 详细模式
+                    let html = `
+                        <div>📈 [行情频道] ${stockCode} (${period}) ${timeStr}</div>
+                        <div class="quote-details">
+                            <div class="quote-row">
+                                <span class="quote-label">开盘:</span>
+                                <span class="quote-value">${klineData.open || 'N/A'}</span>
+                                <span class="quote-label">最高:</span>
+                                <span class="quote-value">${klineData.high || 'N/A'}</span>
+                            </div>
+                            <div class="quote-row">
+                                <span class="quote-label">收盘:</span>
+                                <span class="quote-value ${changeClass}">${klineData.close || 'N/A'}</span>
+                                <span class="quote-label">最低:</span>
+                                <span class="quote-value">${klineData.low || 'N/A'}</span>
+                            </div>
+                            <div class="quote-row">
+                                <span class="quote-label">成交量:</span>
+                                <span class="quote-value">${volumeStr}</span>
+                                <span class="quote-label">成交额:</span>
+                                <span class="quote-value">${amountStr}</span>
+                            </div>
+                    `;
+
+                    if (change !== null && changePercent !== null) {
+                        const changeSymbol = change >= 0 ? '📈' : '📉';
+                        html += `
+                            <div class="quote-row">
+                                <span class="quote-label">涨跌:</span>
+                                <span class="quote-value ${changeClass}">
+                                    ${changeSymbol} ${change.toFixed(2)} (${changePercent}%)
+                                </span>
+                            </div>
+                        `;
+                    }
+
+                    // 添加其他可能存在的字段
+                    const otherFields = ['preClose', 'settlement', 'openInterest', 'turnoverRate'];
+                    let otherFieldsHtml = '';
+                    for (const field of otherFields) {
+                        if (klineData[field] !== undefined) {
+                            let label = field;
+                            let value = klineData[field];
+
+                            // 字段名称翻译
+                            const fieldTranslations = {
+                                'preClose': '前收盘',
+                                'settlement': '结算价',
+                                'openInterest': '持仓量',
+                                'turnoverRate': '换手率'
+                            };
+
+                            if (fieldTranslations[field]) {
+                                label = fieldTranslations[field];
+                            }
+
+                            // 格式化值
+                            if (field === 'turnoverRate' && typeof value === 'number') {
+                                value = (value * 100).toFixed(2) + '%';
+                            }
+
+                            otherFieldsHtml += `
+                                <div class="quote-row">
+                                    <span class="quote-label">${label}:</span>
+                                    <span class="quote-value">${value}</span>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    if (otherFieldsHtml) {
+                        html += otherFieldsHtml;
+                    }
+
+                    html += `</div>`;
+                    return html;
+            }
         }
 
         function connectOrderWebSocket() {
@@ -381,16 +614,21 @@
 
                         if (type === 'quote_data') {
                             const quoteData = data.data || {};
-                            message = `📈 [行情频道] 行情数据: ${quoteData.stock_code || '未知'} 价格: ${quoteData.price || 'N/A'}`;
-                            messageType = 'info';
+                            const klineData = quoteData.data || {};
+
+                            message = formatQuoteData(quoteData, klineData);
+                            messageType = 'quote';
+                            stockCode = quoteData.stock_code || '';
                         } else if (type === 'subscription_confirmed') {
                             const subData = data.data || {};
                             message = `✅ [行情频道] 订阅成功: ${subData.stock_code || '未知'}, ${subData.message || '订阅确认'}`;
                             messageType = 'success';
+                            stockCode = subData.stock_code || '';
                         } else if (type === 'unsubscription_confirmed') {
                             const unsubData = data.data || {};
                             message = `✅ [行情频道] 取消订阅成功: ${unsubData.message || '取消订阅确认'}`;
                             messageType = 'success';
+                            stockCode = ''; // 取消订阅没有特定股票代码
                         } else if (type === 'connection_established') {
                             message = `📡 [行情频道] 连接已建立: ${data.message || '连接成功'}`;
                             messageType = 'success';
@@ -403,9 +641,9 @@
                             message = `📨 [行情频道] 收到消息: ${JSON.stringify(data, null, 2)}`;
                         }
 
-                        addMessage(message, messageType);
+                        addMessage(message, messageType, stockCode);
                     } catch (e) {
-                        addMessage(`📨 [行情频道] 收到消息: ${event.data}`, 'info');
+                        addMessage(`📨 [行情频道] 收到消息: ${event.data}`, 'info', '');
                     }
                 };
 
@@ -442,7 +680,7 @@
                 }
             };
 
-            addMessage(`发送订阅请求: ${JSON.stringify(subscriptionData)}`, 'info');
+            addMessage(`发送订阅请求: ${JSON.stringify(subscriptionData)}`, 'info', stockCode);
             quoteWebSocket.send(JSON.stringify(subscriptionData));
 
             // 更新订阅状态

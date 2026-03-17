@@ -12,12 +12,12 @@ from schemas.etf import (
 )
 from schemas.asset import ErrorResponse
 
-# 创建路由器
-router = APIRouter(
-    prefix="/api/v1/etf",
-    tags=["etf"],
-    responses={404: {"model": ErrorResponse, "description": "ETF信息未找到"}}
-)
+# 创建路由器 - 已注释掉所有 /api/v1/etf/ 接口
+# router = APIRouter(
+#     prefix="/api/v1/etf",
+#     tags=["etf"],
+#     responses={404: {"model": ErrorResponse, "description": "ETF信息未找到"}}
+# )
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -134,7 +134,7 @@ class ETFInfoManager:
 etf_manager = ETFInfoManager()
 
 
-@router.post("/download", response_model=ETFDownloadResponse)
+# @router.post("/download", response_model=ETFDownloadResponse)  # 已注释掉
 async def download_etf_info(
     request: ETFDownloadRequest = Body(..., description="下载请求参数")
 ):
@@ -206,7 +206,7 @@ async def download_etf_info(
         )
 
 
-@router.get("/info", response_model=ETFListResponse)
+# @router.get("/info", response_model=ETFListResponse)  # 已注释掉
 async def get_etf_info(
     status_filter: Optional[str] = Query(None, description="状态过滤"),
     min_creation_unit: Optional[int] = Query(None, description="最小申赎单位过滤"),
@@ -279,7 +279,7 @@ async def get_etf_info(
         )
 
 
-@router.get("/info/{etf_code}", response_model=ETFDetailResponse)
+# @router.get("/info/{etf_code}", response_model=ETFDetailResponse)  # 已注释掉
 async def get_etf_detail(
     etf_code: str = Path(..., description="ETF代码"),
     force_refresh: bool = Query(False, description="是否强制刷新")
@@ -389,7 +389,7 @@ async def get_etf_detail(
         )
 
 
-@router.get("/cache/status")
+# @router.get("/cache/status")  # 已注释掉
 async def get_cache_status():
     """
     获取ETF缓存状态
@@ -415,7 +415,7 @@ async def get_cache_status():
     }
 
 
-@router.delete("/cache")
+# @router.delete("/cache")  # 已注释掉
 async def clear_etf_cache(
     etf_code: Optional[str] = Query(None, description="指定清理的ETF代码，为空则清理所有")
 ):

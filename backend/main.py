@@ -24,6 +24,6 @@ app.include_router(order.router)
 app.include_router(position.router)
 app.include_router(trade.router)
 app.include_router(quote.router)
-app.include_router(etf.router)
+# app.include_router(etf.router)  # 已注释掉所有 /api/v1/etf/ 接口
 app.include_router(websocket_order.router)  # 订单WebSocket路由
 app.include_router(websocket_quote.router)  # 行情WebSocket路由
