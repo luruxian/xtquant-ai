@@ -13,11 +13,12 @@ from schemas.etf import (
 from schemas.asset import ErrorResponse
 
 # 创建路由器 - 已注释掉所有 /api/v1/etf/ 接口
-# router = APIRouter(
-#     prefix="/api/v1/etf",
-#     tags=["etf"],
-#     responses={404: {"model": ErrorResponse, "description": "ETF信息未找到"}}
-# )
+# 注意：router 变量仍然需要定义，以便其他模块可以导入，但所有路由装饰器已被注释掉
+router = APIRouter(
+    prefix="/api/v1/etf",
+    tags=["etf"],
+    responses={404: {"model": ErrorResponse, "description": "ETF信息未找到"}}
+)
 
 # 配置日志
 logger = logging.getLogger(__name__)
