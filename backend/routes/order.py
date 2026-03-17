@@ -14,7 +14,7 @@ router = APIRouter(
 )
 
 
-@router.post("", response_model=OrderResponse)
+# @router.post("", response_model=OrderResponse)  # 已注释掉 /api/v1/order 接口
 async def create_order(request: OrderRequest):
     """
     创建订单（下单）
@@ -133,7 +133,7 @@ async def create_order(request: OrderRequest):
         )
 
 
-@router.post("/async", response_model=AsyncOrderResponse)
+# @router.post("/async", response_model=AsyncOrderResponse)  # 已注释掉 /api/v1/order/async 接口
 async def create_order_async(request: OrderRequest):
     """
     创建异步订单（异步下单）
