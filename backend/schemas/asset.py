@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 
@@ -199,8 +199,9 @@ class StockOrderRequest(BaseModel):
     order_volume: int
     price_type: int
     price: float
-    strategy_name: str
-    order_remark: str
+    # 限制长度以避免底层 BSON 序列化时超出大小限制
+    strategy_name: str = Field("", max_length=256)
+    order_remark: str = Field("", max_length=1024)
 
 
 class StockOrderResponse(BaseModel):
