@@ -120,30 +120,57 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                     if data_list:
                         # 将数据转换为可序列化的格式
                         for data in data_list:
-                            # 这里可以根据实际的数据结构进行调整
-                            quote_data = {
-                                "stock_code": stock_code,
-                                "period": request.period,
-                                "data": data,
-                                "timestamp": time.time()  # 使用time.time()而不是asyncio的事件循环
-                            }
+                            try:
+                                # 数据验证：检查data是否为dict或对象，并过滤异常值
+                                if not isinstance(data, dict):
+                                    logger.warning(f"跳过无效数据格式: {type(data)}, stock_code={stock_code}")
+                                    continue
 
-                            # 使用新的WebSocket管理器广播到quote频道
-                            # 注意：这里需要在异步上下文中运行
-                            async def broadcast_quote():
-                                await websocket_manager.broadcast({
-                                    "type": "quote_data",
-                                    "data": quote_data
-                                }, channel="quote")
+                                # 检查关键字段是否存在和有效
+                                if 'time' not in data or data['time'] is None:
+                                    logger.warning(f"跳过缺少time字段的数据: {data}, stock_code={stock_code}")
+                                    continue
 
-                            # 在事件循环中运行异步函数
-                            if subscription_manager.main_event_loop:
-                                asyncio.run_coroutine_threadsafe(
-                                    broadcast_quote(),
-                                    subscription_manager.main_event_loop
-                                )
+                                # 检查数值字段是否在合理范围内（避免bson序列化问题）
+                                numeric_fields = ['open', 'high', 'low', 'close', 'volume', 'amount']
+                                for field in numeric_fields:
+                                    if field in data:
+                                        value = data[field]
+                                        if isinstance(value, (int, float)):
+                                            # 检查是否为有限数值
+                                            if not (value >= 0 and value < 1e15):  # 合理范围检查
+                                                logger.warning(f"跳过异常数值字段 {field}={value}, stock_code={stock_code}")
+                                                data[field] = 0.0  # 设置为默认值
+                                        else:
+                                            logger.warning(f"跳过非数值字段 {field}={value}, stock_code={stock_code}")
+                                            data[field] = 0.0
 
-                            logger.debug(f"收到行情数据: {stock_code}, 数据长度: {len(data_list)}")
+                                quote_data = {
+                                    "stock_code": stock_code,
+                                    "period": request.period,
+                                    "data": data,
+                                    "timestamp": time.time()  # 使用time.time()而不是asyncio的事件循环
+                                }
+
+                                # 使用新的WebSocket管理器广播到quote频道
+                                # 注意：这里需要在异步上下文中运行
+                                async def broadcast_quote():
+                                    await websocket_manager.broadcast({
+                                        "type": "quote_data",
+                                        "data": quote_data
+                                    }, channel="quote")
+
+                                # 在事件循环中运行异步函数
+                                if subscription_manager.main_event_loop:
+                                    asyncio.run_coroutine_threadsafe(
+                                        broadcast_quote(),
+                                        subscription_manager.main_event_loop
+                                    )
+
+                                logger.debug(f"收到行情数据: {stock_code}, 数据长度: {len(data_list)}")
+                            except Exception as data_error:
+                                logger.error(f"处理单条行情数据失败: {data_error}, stock_code={stock_code}, data={data}")
+                                continue  # 跳过这条数据，继续处理下一条
             except Exception as e:
                 logger.error(f"行情回调处理失败: {e}")
 

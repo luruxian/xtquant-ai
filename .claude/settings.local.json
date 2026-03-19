@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(python -m py_compile routes/websocket_order.py)",
+      "Bash(python -m py_compile routes/quote.py)",
+      "Bash(python -m py_compile services/qmt_service.py)",
+      "Bash(git add:*)"
     ]
   }
 }
