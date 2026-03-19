@@ -29,6 +29,9 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
                 # 使用 asyncio.wait_for 实现超时
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
 
+                # 记录客户端发送的原始消息
+                print(f"收到客户端 {client_id} 的原始消息: {data}")
+
                 # 处理客户端消息
                 message_type = data.get("type")
 
@@ -49,11 +52,13 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
 
                 else:
                     # 其他消息类型
+                    error_msg = f"不支持的消息类型: {message_type}"
+                    print(f"客户端 {client_id} 发送了不支持的消息类型: {message_type}, 完整消息: {data}")
                     await websocket_manager.send_personal_message({
                         "type": "error",
                         "data": {
                             "error": "UNSUPPORTED_MESSAGE_TYPE",
-                            "message": f"不支持的消息类型: {message_type}"
+                            "message": error_msg
                         }
                     }, client_id, channel="quote")
 
@@ -80,11 +85,13 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
         count = subscription_data.get("count", 0)
 
         if not stock_code:
+            error_msg = "缺少股票代码参数"
+            print(f"客户端 {client_id} 订阅请求缺少股票代码参数，订阅数据: {subscription_data}")
             await websocket_manager.send_personal_message({
                 "type": "error",
                 "data": {
                     "error": "INVALID_SUBSCRIPTION",
-                    "message": "缺少股票代码参数"
+                    "message": error_msg
                 }
             }, client_id, channel="quote")
             return
@@ -121,20 +128,24 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
 
             print(f"客户端 {client_id} 订阅了行情: stock_code={stock_code}, period={period}")
         except Exception as sub_error:
+            error_msg = f"订阅失败: {str(sub_error)}"
+            print(f"客户端 {client_id} 订阅行情失败: stock_code={stock_code}, period={period}, 错误: {sub_error}")
             await websocket_manager.send_personal_message({
                 "type": "error",
                 "data": {
                     "error": "SUBSCRIPTION_FAILED",
-                    "message": f"订阅失败: {str(sub_error)}"
+                    "message": error_msg
                 }
             }, client_id, channel="quote")
 
     except Exception as e:
+        error_msg = f"订阅失败: {str(e)}"
+        print(f"客户端 {client_id} 处理订阅请求时发生异常: {e}")
         await websocket_manager.send_personal_message({
             "type": "error",
             "data": {
                 "error": "SUBSCRIPTION_FAILED",
-                "message": f"订阅失败: {str(e)}"
+                "message": error_msg
             }
         }, client_id, channel="quote")
 
@@ -172,10 +183,12 @@ async def _handle_quote_unsubscription(client_id: str, data: Dict[str, Any]):
         print(f"客户端 {client_id} 取消了订阅: subscription_id={subscription_id}")
 
     except Exception as e:
+        error_msg = f"取消订阅失败: {str(e)}"
+        print(f"客户端 {client_id} 取消订阅失败: subscription_id={subscription_id}, 错误: {e}")
         await websocket_manager.send_personal_message({
             "type": "error",
             "data": {
                 "error": "UNSUBSCRIPTION_FAILED",
-                "message": f"取消订阅失败: {str(e)}"
+                "message": error_msg
             }
         }, client_id, channel="quote")

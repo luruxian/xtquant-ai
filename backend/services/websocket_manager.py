@@ -98,7 +98,15 @@ class WebSocketManager:
             for connection in connections:
                 try:
                     await connection.send_text(message_json)
-                    print(f"消息已发送到客户端 {client_id}, 频道: {channel}, 类型: {standard_message.get('type')}")
+                    msg_type = standard_message.get('type')
+                    print(f"消息已发送到客户端 {client_id}, 频道: {channel}, 类型: {msg_type}")
+
+                    # 如果是错误消息，记录更多信息
+                    if msg_type == "error":
+                        error_data = standard_message.get('data', {})
+                        error_code = error_data.get('error', 'UNKNOWN_ERROR')
+                        error_msg = error_data.get('message', '未知错误')
+                        print(f"错误详情 - 错误码: {error_code}, 错误信息: {error_msg}")
                 except Exception as e:
                     print(f"发送消息到客户端 {client_id} 失败: {e}")
                     # 移除失效的连接
@@ -137,6 +145,10 @@ class WebSocketManager:
             for connection in list(connections):
                 try:
                     await connection.send_text(message_json)
+                    msg_type = standard_message.get('type')
+                    # 如果是错误消息或重要消息，记录日志
+                    if msg_type in ["error", "quote_data", "order_result"]:
+                        print(f"广播消息到客户端 {client_id}, 频道: {channel}, 类型: {msg_type}")
                 except Exception as e:
                     print(f"广播消息到客户端 {client_id} 失败: {e}")
                     connections.discard(connection)
