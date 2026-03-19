@@ -31,6 +31,33 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 在应用启动时预初始化交易实例，确保xtquant信息在启动时显示
+try:
+    from utils.config import get_qmt_path, get_session_id
+    from services.trader_singleton import get_trader_singleton
+
+    qmt_path = get_qmt_path()
+    session_id = get_session_id()
+
+    singleton = get_trader_singleton()
+    if not singleton.is_initialized():
+        import logging
+        logger = logging.getLogger("app")
+        logger.info("应用启动时预初始化交易实例...")
+        if singleton.initialize(qmt_path, session_id):
+            logger.info("交易实例预初始化成功")
+        else:
+            logger.warning("交易实例预初始化失败，将在首次使用时初始化")
+    else:
+        import logging
+        logger = logging.getLogger("app")
+        logger.info("交易实例已初始化，跳过预初始化")
+
+except Exception as e:
+    import logging
+    logger = logging.getLogger("app")
+    logger.warning(f"交易实例预初始化异常: {e}，将在首次使用时初始化")
+
 
 @app.get("/")
 async def root():
