@@ -5,7 +5,7 @@ from typing import Optional, Callable, Any
 from .trader_singleton import get_trader_singleton, initialize_trader
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 
 
 class QMTService:
