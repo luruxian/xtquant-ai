@@ -8,7 +8,7 @@ from xtquant.xttrader import XtQuantTraderCallback
 import logging
 import datetime
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 
 
 class QMTCallback(XtQuantTraderCallback):
