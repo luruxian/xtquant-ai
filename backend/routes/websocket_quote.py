@@ -15,6 +15,32 @@ from routes.quote import subscription_manager
 async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
     """行情WebSocket连接端点
 
+    客户端接入参数要求：
+    1. 消息类型限制：客户端发送的消息类型只能是以下三种之一：
+       - "ping": 心跳消息，用于保持连接
+       - "subscribe": 订阅行情消息
+       - "unsubscribe": 取消订阅消息
+
+    2. 订阅请求格式：当消息类型为"subscribe"时，必须包含以下字段：
+       {
+         "type": "subscribe",
+         "data": {
+           "stock_code": "股票代码，如'600000.SH'",  # 必填字段
+           "period": "周期，默认'1d'，可选值：'1m', '5m', '15m', '30m', '1h', '1d', '1w', '1M'",
+           "start_time": "起始时间，格式'YYYYMMDD'或'YYYYMMDDHHMMSS'",
+           "end_time": "结束时间，格式'YYYYMMDD'或'YYYYMMDDHHMMSS'",
+           "count": "数据个数，0表示不请求历史数据"
+         }
+       }
+
+    3. 取消订阅请求格式：当消息类型为"unsubscribe"时，必须包含以下字段：
+       {
+         "type": "unsubscribe",
+         "data": {
+           "subscription_id": "订阅ID"  # 必填字段
+         }
+       }
+
     Args:
         websocket: WebSocket连接对象
         client_id: 客户端ID
@@ -33,6 +59,7 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
                 print(f"收到客户端 {client_id} 的原始消息: {data}")
 
                 # 处理客户端消息
+                # 注意：客户端消息类型只能是 "ping"、"subscribe" 或 "unsubscribe"
                 message_type = data.get("type")
 
                 if message_type == "ping":
@@ -51,7 +78,7 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
                     await _handle_quote_unsubscription(client_id, data)
 
                 else:
-                    # 其他消息类型
+                    # 其他消息类型 - 客户端消息类型只能是 "ping"、"subscribe" 或 "unsubscribe"
                     error_msg = f"不支持的消息类型: {message_type}"
                     print(f"客户端 {client_id} 发送了不支持的消息类型: {message_type}, 完整消息: {data}")
                     await websocket_manager.send_personal_message({
@@ -75,15 +102,24 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
 
 
 async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
-    """处理行情订阅请求"""
+    """处理行情订阅请求
+
+    订阅请求必须包含以下字段：
+    - stock_code: 股票代码（必填），如 '600000.SH'
+    - period: 周期（可选，默认'1d'）
+    - start_time: 起始时间（可选）
+    - end_time: 结束时间（可选）
+    - count: 数据个数（可选，默认0）
+    """
     try:
         subscription_data = data.get("data", {})
-        stock_code = subscription_data.get("stock_code")
+        stock_code = subscription_data.get("stock_code")  # 必填字段
         period = subscription_data.get("period", "1d")
         start_time = subscription_data.get("start_time", "")
         end_time = subscription_data.get("end_time", "")
         count = subscription_data.get("count", 0)
 
+        # 检查必填字段：股票代码
         if not stock_code:
             error_msg = "缺少股票代码参数"
             print(f"客户端 {client_id} 订阅请求缺少股票代码参数，订阅数据: {subscription_data}")
@@ -151,11 +187,16 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
 
 
 async def _handle_quote_unsubscription(client_id: str, data: Dict[str, Any]):
-    """处理取消订阅请求"""
+    """处理取消订阅请求
+
+    取消订阅请求必须包含以下字段：
+    - subscription_id: 订阅ID（必填）
+    """
     try:
         subscription_data = data.get("data", {})
-        subscription_id = subscription_data.get("subscription_id")
+        subscription_id = subscription_data.get("subscription_id")  # 必填字段
 
+        # 检查必填字段：订阅ID
         if not subscription_id:
             await websocket_manager.send_personal_message({
                 "type": "error",
