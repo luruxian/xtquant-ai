@@ -1,10 +1,14 @@
 """订单WebSocket路由"""
 import json
 import asyncio
+import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from services.websocket_manager import websocket_manager
 
 router = APIRouter()
+
+# WebSocket专用日志器
+logger = logging.getLogger("app.websocket")
 
 
 @router.websocket("/ws/order/{client_id}")
@@ -61,7 +65,7 @@ async def order_websocket_endpoint(websocket: WebSocket, client_id: str):
 
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket, client_id)
-        print(f"订单WebSocket连接断开: client_id={client_id}")
+        logger.info(f"订单WebSocket连接断开: client_id={client_id}")
     except Exception as e:
         websocket_manager.disconnect(websocket, client_id)
-        print(f"订单WebSocket连接错误: client_id={client_id}, error={e}")
+        logger.error(f"订单WebSocket连接错误: client_id={client_id}, error={e}")
