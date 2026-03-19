@@ -13,7 +13,7 @@ import logging
 
 from .qmt_callback import QMTCallback
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 
 
 class TraderSingleton:
