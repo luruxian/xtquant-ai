@@ -1,6 +1,7 @@
 """日志配置模块"""
 import logging
 import logging.config
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -17,7 +18,6 @@ def setup_logging() -> bool:
     """
     try:
         # 从环境变量获取配置
-        import os
         log_dir_env = os.getenv("LOG_DIR", "backend/logs")
         log_level_env = os.getenv("LOG_LEVEL", "INFO")
         console_output = os.getenv("LOG_CONSOLE", "true").lower() == "true"

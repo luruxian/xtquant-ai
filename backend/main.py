@@ -1,4 +1,7 @@
 """主应用入口"""
+import logging
+import os
+import sys
 from fastapi import FastAPI
 
 # 尝试导入日志配置模块
@@ -10,20 +13,17 @@ try:
 except ImportError as e:
     # 如果utils模块不存在，尝试相对导入
     try:
-        import sys
-        import os
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from utils.logging_config import setup_logging
         setup_logging()
         logging_initialized = True
     except ImportError:
         # 日志系统初始化失败，但应用仍可启动
-        import logging
         logging.basicConfig(level=logging.INFO)
         logging.warning(f"日志系统初始化失败: {e}，使用基础配置")
         logging_initialized = False
 
-from routes import asset, order, position, trade, quote, etf, websocket_order, websocket_quote
+from routes import asset, order, position, trade, quote, websocket_order, websocket_quote
 
 app = FastAPI(
     title="MiniQMT AI Backend",
@@ -41,7 +41,6 @@ try:
 
     singleton = get_trader_singleton()
     if not singleton.is_initialized():
-        import logging
         logger = logging.getLogger("app")
         logger.info("应用启动时预初始化交易实例...")
         if singleton.initialize(qmt_path, session_id):
@@ -49,12 +48,10 @@ try:
         else:
             logger.warning("交易实例预初始化失败，将在首次使用时初始化")
     else:
-        import logging
         logger = logging.getLogger("app")
         logger.info("交易实例已初始化，跳过预初始化")
 
 except Exception as e:
-    import logging
     logger = logging.getLogger("app")
     logger.warning(f"交易实例预初始化异常: {e}，将在首次使用时初始化")
 

@@ -6,10 +6,12 @@ from typing import Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from services.websocket_manager import websocket_manager
 
-router = APIRouter()
-
 # 导入行情订阅管理器
 from routes.quote import subscription_manager
+from schemas.quote import QuoteSubscribeRequest
+from routes.quote import subscribe_quote
+
+router = APIRouter()
 
 # WebSocket专用日志器
 logger = logging.getLogger("app.websocket")
@@ -135,10 +137,6 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
                 }
             }, client_id, channel="quote")
             return
-
-        # 导入必要的模块
-        from schemas.quote import QuoteSubscribeRequest
-        from routes.quote import subscribe_quote
 
         # 创建订阅请求对象
         request = QuoteSubscribeRequest(

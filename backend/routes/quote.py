@@ -4,6 +4,7 @@ from typing import Optional, Dict, List, Any
 import asyncio
 import json
 import logging
+import time
 
 from schemas.quote import (
     QuoteSubscribeRequest, QuoteSubscribeResponse, QuoteDataResponse,
@@ -14,6 +15,9 @@ from schemas.asset import ErrorResponse
 from services.qmt_service import QMTService
 from services.websocket_manager import websocket_manager
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
+
+# 导入xtquant相关模块
+from xtquant import xtdata
 
 logger = logging.getLogger("app.quote")
 
@@ -95,9 +99,6 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
 
         session_id = get_session_id()
 
-        # 导入xtquant相关模块
-        from xtquant import xtdata
-
         # 创建QMT服务实例
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
@@ -114,7 +115,6 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
         def quote_callback(datas):
             """行情数据回调函数"""
             try:
-                import time
                 for stock_code in datas:
                     data_list = datas[stock_code]
                     if data_list:
@@ -171,6 +171,10 @@ async def subscribe_quote(request: QuoteSubscribeRequest):
                             except Exception as data_error:
                                 logger.error(f"处理单条行情数据失败: {data_error}, stock_code={stock_code}, data={data}")
                                 continue  # 跳过这条数据，继续处理下一条
+            except AssertionError as ae:
+                logger.error(f"行情回调中发生AssertionError: {ae}")
+                # 等待5秒后继续处理
+                time.sleep(5)
             except Exception as e:
                 logger.error(f"行情回调处理失败: {e}")
 
@@ -265,9 +269,6 @@ async def unsubscribe_quote(request: QuoteUnsubscribeRequest):
                     message=f"订阅号 {request.subscription_id} 不存在"
                 ).dict()
             )
-
-        # 导入xtquant相关模块
-        from xtquant import xtdata
 
         # 调用xtdata的取消订阅接口
         xtdata_subscription_id = subscription_data.get("subscription_id")
@@ -390,9 +391,6 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
             )
 
         session_id = get_session_id()
-
-        # 导入xtquant相关模块
-        from xtquant import xtdata
 
         # 解析字段列表
         field_list = []

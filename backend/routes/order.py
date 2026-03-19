@@ -7,6 +7,10 @@ from services.qmt_service import QMTService
 from services.websocket_manager import websocket_manager
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
+# 导入xtquant相关模块
+from xtquant.xttype import StockAccount
+from xtquant import xtconstant
+
 router = APIRouter(
     prefix="/api/v1/order",
     tags=["order"],
@@ -42,9 +46,6 @@ async def create_order(request: OrderRequest):
         
         session_id = get_session_id()
         
-        from xtquant.xttype import StockAccount
-        from xtquant import xtconstant
-
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
         if not trader:
@@ -166,9 +167,6 @@ async def create_order_async(request: OrderRequest):
             )
 
         session_id = get_session_id()
-
-        from xtquant.xttype import StockAccount
-        from xtquant import xtconstant
 
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
@@ -593,9 +591,6 @@ async def order_stock(request: StockOrderRequest):
 
         session_id = get_session_id()
 
-        from xtquant.xttype import StockAccount
-        from xtquant import xtconstant
-
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
         if not trader:
@@ -728,8 +723,6 @@ async def cancel_order_stock(request: StockCancelOrderRequest):
             )
 
         session_id = get_session_id()
-
-        from xtquant.xttype import StockAccount
 
         qmt_service = QMTService(qmt_path, session_id)
         trader = qmt_service.get_shared_trader()
