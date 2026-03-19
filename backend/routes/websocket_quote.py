@@ -1,6 +1,7 @@
 """行情WebSocket路由"""
 import json
 import asyncio
+import logging
 from typing import Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from services.websocket_manager import websocket_manager
@@ -9,6 +10,9 @@ router = APIRouter()
 
 # 导入行情订阅管理器
 from routes.quote import subscription_manager
+
+# WebSocket专用日志器
+logger = logging.getLogger("app.websocket")
 
 
 @router.websocket("/ws/quote/{client_id}")
@@ -56,7 +60,7 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
 
                 # 记录客户端发送的原始消息
-                print(f"收到客户端 {client_id} 的原始消息: {data}")
+                logger.info(f"收到客户端 {client_id} 的原始消息: {data}")
 
                 # 处理客户端消息
                 # 注意：客户端消息类型只能是 "ping"、"subscribe" 或 "unsubscribe"
@@ -80,7 +84,7 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
                 else:
                     # 其他消息类型 - 客户端消息类型只能是 "ping"、"subscribe" 或 "unsubscribe"
                     error_msg = f"不支持的消息类型: {message_type}"
-                    print(f"客户端 {client_id} 发送了不支持的消息类型: {message_type}, 完整消息: {data}")
+                    logger.warning(f"客户端 {client_id} 发送了不支持的消息类型: {message_type}, 完整消息: {data}")
                     await websocket_manager.send_personal_message({
                         "type": "error",
                         "data": {
@@ -95,10 +99,10 @@ async def quote_websocket_endpoint(websocket: WebSocket, client_id: str):
 
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket, client_id)
-        print(f"行情WebSocket连接断开: client_id={client_id}")
+        logger.info(f"行情WebSocket连接断开: client_id={client_id}")
     except Exception as e:
         websocket_manager.disconnect(websocket, client_id)
-        print(f"行情WebSocket连接错误: client_id={client_id}, error={e}")
+        logger.error(f"行情WebSocket连接错误: client_id={client_id}, error={e}")
 
 
 async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
@@ -122,7 +126,7 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
         # 检查必填字段：股票代码
         if not stock_code:
             error_msg = "缺少股票代码参数"
-            print(f"客户端 {client_id} 订阅请求缺少股票代码参数，订阅数据: {subscription_data}")
+            logger.warning(f"客户端 {client_id} 订阅请求缺少股票代码参数，订阅数据: {subscription_data}")
             await websocket_manager.send_personal_message({
                 "type": "error",
                 "data": {
@@ -162,10 +166,10 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
                 }
             }, client_id, channel="quote")
 
-            print(f"客户端 {client_id} 订阅了行情: stock_code={stock_code}, period={period}")
+            logger.info(f"客户端 {client_id} 订阅了行情: stock_code={stock_code}, period={period}")
         except Exception as sub_error:
             error_msg = f"订阅失败: {str(sub_error)}"
-            print(f"客户端 {client_id} 订阅行情失败: stock_code={stock_code}, period={period}, 错误: {sub_error}")
+            logger.error(f"客户端 {client_id} 订阅行情失败: stock_code={stock_code}, period={period}, 错误: {sub_error}")
             await websocket_manager.send_personal_message({
                 "type": "error",
                 "data": {
@@ -176,7 +180,7 @@ async def _handle_quote_subscription(client_id: str, data: Dict[str, Any]):
 
     except Exception as e:
         error_msg = f"订阅失败: {str(e)}"
-        print(f"客户端 {client_id} 处理订阅请求时发生异常: {e}")
+        logger.error(f"客户端 {client_id} 处理订阅请求时发生异常: {e}")
         await websocket_manager.send_personal_message({
             "type": "error",
             "data": {
@@ -221,11 +225,11 @@ async def _handle_quote_unsubscription(client_id: str, data: Dict[str, Any]):
             }
         }, client_id, channel="quote")
 
-        print(f"客户端 {client_id} 取消了订阅: subscription_id={subscription_id}")
+        logger.info(f"客户端 {client_id} 取消了订阅: subscription_id={subscription_id}")
 
     except Exception as e:
         error_msg = f"取消订阅失败: {str(e)}"
-        print(f"客户端 {client_id} 取消订阅失败: subscription_id={subscription_id}, 错误: {e}")
+        logger.error(f"客户端 {client_id} 取消订阅失败: subscription_id={subscription_id}, 错误: {e}")
         await websocket_manager.send_personal_message({
             "type": "error",
             "data": {
