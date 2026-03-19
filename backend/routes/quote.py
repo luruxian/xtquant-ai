@@ -15,7 +15,7 @@ from services.qmt_service import QMTService
 from services.websocket_manager import websocket_manager
 from utils.config import get_qmt_path, get_session_id, validate_qmt_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app.quote")
 
 router = APIRouter(
     prefix="/api/v1/quote",
