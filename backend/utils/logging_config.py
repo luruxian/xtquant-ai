@@ -53,12 +53,13 @@ def setup_logging() -> bool:
         }
 
         handlers["websocket_file"] = {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "logging.handlers.TimedRotatingFileHandler",
             "level": log_level_env,
             "formatter": "detailed",
             "filename": str(log_dir / "websocket.log"),
-            "maxBytes": max_bytes,
-            "backupCount": 10,
+            "when": "midnight",
+            "interval": 1,
+            "backupCount": backup_count,
             "encoding": "utf-8"
         }
 
