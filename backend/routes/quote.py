@@ -415,8 +415,9 @@ async def test_quote(
                 period=period,
                 start_time=start_time,
                 end_time=end_time,
-                incrementally=True
+                incrementally=False
             )
+            logger.info(f"下载行情数据成功: {stock_code}, period={period}, start_time={start_time}, end_time={end_time}")
         except Exception as download_error:
             logger.warning(f"下载行情数据失败，尝试直接获取: {download_error}")
 
