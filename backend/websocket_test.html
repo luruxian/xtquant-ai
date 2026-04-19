@@ -213,6 +213,18 @@
                     <option value="60m">60分钟</option>
                 </select>
             </div>
+            <div class="input-group">
+                <label for="quoteStartTime">起始时间 start_time（可选）:</label>
+                <input type="text" id="quoteStartTime" placeholder="YYYYMMDD 或 YYYYMMDDHHMMSS，留空不传">
+            </div>
+            <div class="input-group">
+                <label for="quoteEndTime">结束时间 end_time（可选）:</label>
+                <input type="text" id="quoteEndTime" placeholder="YYYYMMDD 或 YYYYMMDDHHMMSS，留空不传">
+            </div>
+            <div class="input-group">
+                <label for="quoteCount">数据条数 count（可选）:</label>
+                <input type="text" id="quoteCount" placeholder="留空为 0（不请求历史），填正整数">
+            </div>
             <button onclick="subscribeQuote()" id="subscribeBtn">订阅行情</button>
             <button onclick="unsubscribeQuote()" id="unsubscribeBtn" disabled>取消订阅</button>
             <div id="subscriptionStatus" class="status disconnected">未订阅</div>
@@ -666,18 +678,37 @@
 
             const stockCode = document.getElementById('quoteStockCode').value;
             const period = document.getElementById('quotePeriod').value;
+            const startTime = document.getElementById('quoteStartTime').value.trim();
+            const endTime = document.getElementById('quoteEndTime').value.trim();
+            const countRaw = document.getElementById('quoteCount').value.trim();
 
             if (!stockCode) {
                 addMessage('请输入证券代码', 'warning');
                 return;
             }
 
+            const payload = {
+                stock_code: stockCode,
+                period: period
+            };
+            if (startTime) {
+                payload.start_time = startTime;
+            }
+            if (endTime) {
+                payload.end_time = endTime;
+            }
+            if (countRaw !== '') {
+                const n = parseInt(countRaw, 10);
+                if (!Number.isFinite(n) || n < 0) {
+                    addMessage('count 须为非负整数，留空表示 0', 'warning');
+                    return;
+                }
+                payload.count = n;
+            }
+
             const subscriptionData = {
                 type: 'subscribe',
-                data: {
-                    stock_code: stockCode,
-                    period: period
-                }
+                data: payload
             };
 
             addMessage(`发送订阅请求: ${JSON.stringify(subscriptionData)}`, 'info', stockCode);

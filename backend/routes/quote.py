@@ -369,7 +369,14 @@ async def get_active_subscriptions():
 
 
 @router.get("/test/{stock_code}")
-async def test_quote(stock_code: str, period: str = "1d", count: int = 10, fields: str = ""):
+async def test_quote(
+    stock_code: str,
+    period: str = "1d",
+    count: int = 10,
+    fields: str = "",
+    start_time: str = "",
+    end_time: str = "",
+):
     """
     测试获取行情数据（不订阅）
 
@@ -377,6 +384,8 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
     - **period**: 周期，默认 '1d'，可选：tick, 1m, 5m, 15m, 30m, 1h, 1d, 1w, 1mon, 1q, 1hy, 1y
     - **count**: 数据个数，默认 10
     - **fields**: 返回字段列表，逗号分隔，为空则返回全部字段
+    - **start_time**: 起始时间，格式 'YYYYMMDD' 或 'YYYYMMDDHHMMSS'，留空表示不限制（与 xtquant 一致）
+    - **end_time**: 结束时间，格式同上，留空表示不限制
     """
     try:
         qmt_path = get_qmt_path()
@@ -404,8 +413,8 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
             xtdata.download_history_data(
                 stock_code=stock_code,
                 period=period,
-                start_time='',
-                end_time='',
+                start_time=start_time,
+                end_time=end_time,
                 incrementally=True
             )
         except Exception as download_error:
@@ -417,8 +426,8 @@ async def test_quote(stock_code: str, period: str = "1d", count: int = 10, field
             field_list=field_list,
             stock_list=[stock_code],
             period=period,
-            start_time='',
-            end_time='',
+            start_time=start_time,
+            end_time=end_time,
             count=count,
             dividend_type='none',
             fill_data=True
