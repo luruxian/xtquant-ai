@@ -451,39 +451,34 @@ async def test_quote(
             # K线数据
             # data_dict格式: { field1 : pd.DataFrame, field2 : pd.DataFrame, ... }
             # DataFrame的index为stock_list，columns为time_list
-            if field_list:
-                # 有指定字段
-                for field in field_list:
-                    if field in data_dict:
-                        df = data_dict[field]
-                        if stock_code in df.index:
-                            series = df.loc[stock_code]
-                            # 将每列数据转换为字典列表
-                            for time_idx in series.index:
-                                record = {
-                                    "time": str(time_idx),
-                                    "stock_code": stock_code,
-                                    "period": period
-                                }
-                                for f in field_list:
-                                    if f in data_dict and stock_code in data_dict[f].index:
-                                        record[f] = data_dict[f].loc[stock_code, time_idx]
-                                result_data.append(record)
-            else:
-                # 返回全部字段
-                for field, df in data_dict.items():
-                    if stock_code in df.index:
-                        series = df.loc[stock_code]
-                        for time_idx in series.index:
-                            record = {
-                                "time": str(time_idx),
-                                "stock_code": stock_code,
-                                "period": period
-                            }
-                            for f, f_df in data_dict.items():
-                                if stock_code in f_df.index:
-                                    record[f] = f_df.loc[stock_code, time_idx]
-                            result_data.append(record)
+            fields_to_read = (
+                [f for f in field_list if f in data_dict]
+                if field_list
+                else list(data_dict.keys())
+            )
+            fields_to_read = [
+                f for f in fields_to_read
+                if f in data_dict and stock_code in data_dict[f].index
+            ]
+            time_axis = None
+            for f in fields_to_read:
+                row = data_dict[f].loc[stock_code]
+                if len(row.index) > 0:
+                    time_axis = row.index
+                    break
+            if time_axis is not None:
+                for time_idx in time_axis:
+                    record = {
+                        "time": str(time_idx),
+                        "stock_code": stock_code,
+                        "period": period,
+                    }
+                    for f in fields_to_read:
+                        df = data_dict[f]
+                        if time_idx not in df.columns:
+                            continue
+                        record[f] = df.loc[stock_code, time_idx]
+                    result_data.append(record)
 
         return QuoteDataResponse(
             stock_code=stock_code,
